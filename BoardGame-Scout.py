@@ -67,7 +67,7 @@ st.markdown("""
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
         min-height: 38px !important;
-        padding-top: 4px !important;
+        padding-top: 10px !important;
         padding-bottom: 4px !important;
     }
             
@@ -162,13 +162,6 @@ st.markdown("""
 [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
     margin-top: 0.35rem !important;  /* push input slightly down */
 }
-
-/* Push entire multiselect container down from the label above */
-[data-testid="stExpander"] .stColumn [data-baseweb="select"] {
-    margin-top: 0.6rem !important;
-    margin-bottom: 0.6rem !important;
-}
-
 
             
     </style>
@@ -581,25 +574,12 @@ with st.expander("🎚️ Filters"):
         category_options = get_unique_categories()
         category_active = len(st.session_state["f_category"]) > 0
 
-        # st.markdown(
-        #     f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
-        #     f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
-        #     unsafe_allow_html=True
-        # )
-        # st.multiselect("", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
-        with st.container():
-            st.markdown(
-                f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0;">'
-                f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
-                unsafe_allow_html=True
-            )
-            st.multiselect(
-                "",
-                category_options,
-                key="f_category",
-                label_visibility="collapsed",
-                placeholder="Select categories..."
-            )
+        st.markdown(
+            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
+            f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
+            unsafe_allow_html=True
+        )
+        st.multiselect("", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
 
 
 
@@ -611,26 +591,12 @@ with st.expander("🎚️ Filters"):
         mechanics_options = get_unique_mechanics()
         mechanics_active = len(st.session_state["f_mechanics"]) > 0
 
-        # st.markdown(
-        #     f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
-        #     f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
-        #     unsafe_allow_html=True
-        # )
-        # st.multiselect("", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
-        with st.container():
-            st.markdown(
-                f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0;">'
-                f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
-                unsafe_allow_html=True
-            )
-            st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
-            st.multiselect(
-                "",
-                mechanics_options,
-                key="f_mechanics",
-                label_visibility="collapsed",
-                placeholder="Select mechanics..."
-            )
+        st.markdown(
+            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
+            f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
+            unsafe_allow_html=True
+        )
+        st.multiselect("", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
 
     # -------------------------------------------------
     # COLUMN 3 — Designers + Artists + Publishers
