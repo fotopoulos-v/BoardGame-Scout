@@ -17,6 +17,27 @@ st.set_page_config(
     layout="wide"
 )
 
+
+
+import os
+import zipfile
+
+DB_PATH = "boardgames.db"
+ZIP_PATH = "boardgames_db.zip"
+
+# Extract the DB from zip only if needed
+if not os.path.exists(DB_PATH):
+    if os.path.exists(ZIP_PATH):
+        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+            zip_ref.extractall(".")
+        print("📦 Extracted boardgames.db from boardgames_db.zip")
+    else:
+        raise FileNotFoundError(
+            f"❌ Neither {DB_PATH} nor {ZIP_PATH} were found. Cannot load the database."
+        )
+
+
+
 # -------------------------
 # CSS (unchanged except small additions for API messages)
 # -------------------------
