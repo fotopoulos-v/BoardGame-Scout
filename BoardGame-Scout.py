@@ -587,7 +587,7 @@ with st.expander("🎚️ Filters"):
             unsafe_allow_html=True
         )
         # Add spacer
-        st.markdown('<div style="height:6px"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="height:20px"></div>', unsafe_allow_html=True)
         st.multiselect("", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
 
 
@@ -605,7 +605,7 @@ with st.expander("🎚️ Filters"):
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
-        st.markdown('<div style="height:6px"></div>', unsafe_allow_html=True)
+        st.markdown('<div style="height:20px"></div>', unsafe_allow_html=True)
         st.multiselect("", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
 
     # -------------------------------------------------
