@@ -581,14 +581,25 @@ with st.expander("🎚️ Filters"):
         category_options = get_unique_categories()
         category_active = len(st.session_state["f_category"]) > 0
 
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
-            f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
-            unsafe_allow_html=True
-        )
-        # Add spacer
-        st.markdown('<div style="height:20px"></div>', unsafe_allow_html=True)
-        st.multiselect("", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
+        # st.markdown(
+        #     f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
+        #     f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
+        #     unsafe_allow_html=True
+        # )
+        # st.multiselect("", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
+        with st.container():
+            st.markdown(
+                f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0;">'
+                f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
+                unsafe_allow_html=True
+            )
+            st.multiselect(
+                "",
+                category_options,
+                key="f_category",
+                label_visibility="collapsed",
+                placeholder="Select categories..."
+            )
 
 
 
@@ -600,13 +611,26 @@ with st.expander("🎚️ Filters"):
         mechanics_options = get_unique_mechanics()
         mechanics_active = len(st.session_state["f_mechanics"]) > 0
 
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
-            f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
-            unsafe_allow_html=True
-        )
-        st.markdown('<div style="height:20px"></div>', unsafe_allow_html=True)
-        st.multiselect("", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
+        # st.markdown(
+        #     f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
+        #     f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
+        #     unsafe_allow_html=True
+        # )
+        # st.multiselect("", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
+        with st.container():
+            st.markdown(
+                f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0;">'
+                f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
+                unsafe_allow_html=True
+            )
+            st.markdown('<div style="height:8px"></div>', unsafe_allow_html=True)
+            st.multiselect(
+                "",
+                mechanics_options,
+                key="f_mechanics",
+                label_visibility="collapsed",
+                placeholder="Select mechanics..."
+            )
 
     # -------------------------------------------------
     # COLUMN 3 — Designers + Artists + Publishers
