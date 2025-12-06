@@ -72,6 +72,12 @@ st.markdown("""
     }
             
        
+    /* Target multiselects specifically inside the expander to add top space */
+        [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+            margin-top: 1.8rem !important; /* Adjust this value as needed */
+        }
+                
+
         /* Remove text cursor from multiselect - more specific */
         div[data-testid="stMultiSelect"] input,
         div[data-testid="stMultiSelect"] input:hover,
