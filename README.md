@@ -56,7 +56,4 @@ Here’s what happens behind the scenes:
 | Data handling | Pandas, Requests |
 | Database extraction | Python `zipfile`, `os` |
 
----
-
-## 📁 Project Structure
 
