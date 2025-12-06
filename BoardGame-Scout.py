@@ -163,16 +163,12 @@ st.markdown("""
     margin-top: 0.35rem !important;  /* push input slightly down */
 }
 
-/* Multiselects / combo boxes spacing */
+/* Push entire multiselect container down from the label above */
 [data-testid="stExpander"] .stColumn [data-baseweb="select"] {
-    margin-top: 0.4rem !important;      /* push input down from label */
-    margin-bottom: 0.5rem !important;   /* add spacing below the field */
+    margin-top: 0.6rem !important;
+    margin-bottom: 0.6rem !important;
 }
 
-/* Multiselect placeholder label spacing (inside div) */
-[data-testid="stExpander"] .stColumn [data-baseweb="select"] > div:first-child {
-    margin-bottom: 0.2rem !important;
-}
 
             
     </style>
