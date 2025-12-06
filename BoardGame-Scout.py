@@ -153,16 +153,16 @@ st.markdown("""
         font-weight: bold;
     }
 
+/* Labels inside the expander columns */
+[data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
+    margin-bottom: 0.3rem !important;  /* add a bit of space below the label */
+}
 
-    /* Only apply to rows after the first (approximation) */
-    [data-testid="stExpander"] .stColumn > div:nth-child(n+3) .stMarkdown {
-        margin-bottom: -0.4rem !important;
-    }
+/* Number input fields immediately following those labels */
+[data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
+    margin-top: 0.35rem !important;  /* push input slightly down */
+}
 
-    [data-testid="stExpander"] .stColumn > div:nth-child(n+3) .stNumberInput,
-    [data-testid="stExpander"] .stColumn > div:nth-child(n+3) .stSlider {
-        margin-top: 0.4rem !important;
-    }
 
 
             
