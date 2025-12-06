@@ -154,6 +154,17 @@ st.markdown("""
     }
 
 
+    /* Only apply to rows after the first (approximation) */
+    [data-testid="stExpander"] .stColumn > div:nth-child(n+3) .stMarkdown {
+        margin-bottom: -0.4rem !important;
+    }
+
+    [data-testid="stExpander"] .stColumn > div:nth-child(n+3) .stNumberInput,
+    [data-testid="stExpander"] .stColumn > div:nth-child(n+3) .stSlider {
+        margin-top: 0.4rem !important;
+    }
+
+
             
     </style>
 """, unsafe_allow_html=True)
