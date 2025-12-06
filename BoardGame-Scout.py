@@ -575,7 +575,7 @@ with st.expander("🎚️ Filters"):
         category_active = len(st.session_state["f_category"]) > 0
 
         st.markdown(
-            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1rem;">'
+            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0;">'
             f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
             unsafe_allow_html=True
         )
@@ -592,7 +592,7 @@ with st.expander("🎚️ Filters"):
         mechanics_active = len(st.session_state["f_mechanics"]) > 0
 
         st.markdown(
-            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1rem;">'
+            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0;">'
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
