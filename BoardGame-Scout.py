@@ -163,7 +163,15 @@ st.markdown("""
     margin-top: 0.35rem !important;  /* push input slightly down */
 }
 
+/* Add spacing between multiselect label and the actual select box */
+[data-testid="stExpander"] .stColumn .stMultiSelect > div:first-child {
+    margin-bottom: 0.3rem !important;
+}
 
+/* Push the select input down a bit */
+[data-testid="stExpander"] .stColumn .stMultiSelect [data-baseweb="select"] {
+    margin-top: 0.35rem !important;
+}
 
             
     </style>
