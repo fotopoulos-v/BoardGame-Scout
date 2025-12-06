@@ -160,7 +160,7 @@ st.markdown("""
 
 /* Number input fields immediately following those labels */
 [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-    margin-top: 0.45rem !important;  /* push input slightly down */
+    margin-top: 0.65rem !important;  /* push input slightly down */
 }
 
             
@@ -575,7 +575,7 @@ with st.expander("🎚️ Filters"):
         category_active = len(st.session_state["f_category"]) > 0
 
         st.markdown(
-            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
+            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0; margin-bottom: 1rem;">'
             f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
             unsafe_allow_html=True
         )
@@ -592,7 +592,7 @@ with st.expander("🎚️ Filters"):
         mechanics_active = len(st.session_state["f_mechanics"]) > 0
 
         st.markdown(
-            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1.88rem;">'
+            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:0; margin-bottom: 1rem;">'
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
