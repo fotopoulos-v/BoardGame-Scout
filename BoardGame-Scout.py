@@ -67,8 +67,8 @@ st.markdown("""
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
         min-height: 38px !important;
-        padding-top: 20px !important;
-        padding-bottom: 0px !important;
+        padding-top: 4px !important;
+        padding-bottom: 4px !important;
     }
             
        
@@ -160,7 +160,7 @@ st.markdown("""
 
 /* Number input fields immediately following those labels */
 [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-    margin-top: 0.35rem !important;  /* push input slightly down */
+    margin-top: 0.45rem !important;  /* push input slightly down */
 }
 
             
