@@ -116,7 +116,7 @@ st.markdown("""
 
  /* Compact filters inside the expander */
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
-        gap: 1.1rem !important;
+        gap: 0.1rem !important;
     }
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
@@ -157,7 +157,7 @@ st.markdown("""
 
 /* Labels inside the expander columns */
 [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-    margin-bottom: 0.3rem !important;  /* add a bit of space below the label */
+    margin-bottom: 0.8rem !important;  /* add a bit of space below the label */
 }
 
 /* Number input fields immediately following those labels */
