@@ -1124,55 +1124,110 @@ if st.session_state.get("show_user_section", False):
                         st.session_state["bgg_page"] = bgg_page + 1
                         st.rerun()
 
-    elif sub_view == "recommendations" and "rec_df" in st.session_state:
-        # =====  RECOMMENDATIONS  =====
-        rec_df = st.session_state["rec_df"].copy()   # work on a copy
-        # 1. drop the internal game_id column
-        rec_df = rec_df.drop(columns=["game_id"])
-        # 2. round the predicted rating to 1 decimal
-        rec_df["Predicted Rating"] = rec_df["Predicted Rating"].round(1)
-        # 3. pretty index
-        rec_df.index = range(1, len(rec_df)+1)
-        rec_df.index.name = "No."
-        st.dataframe(rec_df, use_container_width=True)
+    # elif sub_view == "recommendations" and "rec_df" in st.session_state:
+    #     # =====  RECOMMENDATIONS  =====
+    #     rec_df = st.session_state["rec_df"].copy()   # work on a copy
+    #     # 1. drop the internal game_id column
+    #     rec_df = rec_df.drop(columns=["game_id"])
+    #     # 2. round the predicted rating to 1 decimal
+    #     rec_df["Predicted Rating"] = rec_df["Predicted Rating"].round(1)
+    #     # 3. pretty index
+    #     rec_df.index = range(1, len(rec_df)+1)
+    #     rec_df.index.name = "No."
+    #     st.dataframe(rec_df, use_container_width=True)
         
-        # Pagination button styling (NOT NEEDED IF THE RECOMMENDATIONS ARE < 51)
-        st.markdown("""
-            <style>
-            /* BGG Prev button */
-            div.stElementContainer.st-key-prev_bgg_btn div.stButton > button,
-            div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"] {
-                background-color: #212B45 !important;   
-                color: white !important;
-                border: 1px solid #333 !important;
-                width: 120px !important;
-                height: 38px !important;
-                font-size: 16px !important;
-            }
-            div.stElementContainer.st-key-prev_bgg_btn div.stButton > button:hover,
-            div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"]:hover {
-                background-color: #041D5C !important;
-                transform: scale(1.05);
-            }
+    #     # Pagination button styling (NOT NEEDED IF THE RECOMMENDATIONS ARE < 51)
+    #     st.markdown("""
+    #         <style>
+    #         /* BGG Prev button */
+    #         div.stElementContainer.st-key-prev_bgg_btn div.stButton > button,
+    #         div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"] {
+    #             background-color: #212B45 !important;   
+    #             color: white !important;
+    #             border: 1px solid #333 !important;
+    #             width: 120px !important;
+    #             height: 38px !important;
+    #             font-size: 16px !important;
+    #         }
+    #         div.stElementContainer.st-key-prev_bgg_btn div.stButton > button:hover,
+    #         div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"]:hover {
+    #             background-color: #041D5C !important;
+    #             transform: scale(1.05);
+    #         }
             
-            /* BGG Next button */
-            div.stElementContainer.st-key-next_bgg_btn div.stButton > button,
-            div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"] {
-                background-color: #212B45 !important;   
-                color: white !important;
-                border: 1px solid #333 !important;
-                width: 120px !important;
-                height: 38px !important;
-                font-size: 16px !important;
-            }
-            div.stElementContainer.st-key-next_bgg_btn div.stButton > button:hover,
-            div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"]:hover {
-                background-color: #041D5C !important;
-                transform: scale(1.05);
-            }
-            </style>
-        """, unsafe_allow_html=True)
+    #         /* BGG Next button */
+    #         div.stElementContainer.st-key-next_bgg_btn div.stButton > button,
+    #         div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"] {
+    #             background-color: #212B45 !important;   
+    #             color: white !important;
+    #             border: 1px solid #333 !important;
+    #             width: 120px !important;
+    #             height: 38px !important;
+    #             font-size: 16px !important;
+    #         }
+    #         div.stElementContainer.st-key-next_bgg_btn div.stButton > button:hover,
+    #         div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"]:hover {
+    #             background-color: #041D5C !important;
+    #             transform: scale(1.05);
+    #         }
+    #         </style>
+    #     """, unsafe_allow_html=True)
 
+    elif sub_view == "recommendations" and "rec_df" in st.session_state:
+            # =====  RECOMMENDATIONS  =====
+            rec_df = st.session_state["rec_df"].copy()   # work on a copy
+            
+            # 🔥 FIX: Check if the DataFrame is empty (or has no expected columns) before processing 🔥
+            if rec_df.empty:
+                # If the DataFrame is empty, we do nothing. 
+                # The st.warning message was already displayed in the recommend_clicked logic.
+                pass 
+            else:
+                # 1. drop the internal game_id column
+                rec_df = rec_df.drop(columns=["game_id"])
+                # 2. round the predicted rating to 1 decimal
+                rec_df["Predicted Rating"] = rec_df["Predicted Rating"].round(1)
+                # 3. pretty index
+                rec_df.index = range(1, len(rec_df)+1)
+                rec_df.index.name = "No."
+                st.dataframe(rec_df, use_container_width=True)
+                
+                # Pagination button styling (NOT NEEDED IF THE RECOMMENDATIONS ARE < 51)
+                st.markdown("""
+                    <style>
+                    /* BGG Prev button */
+                    div.stElementContainer.st-key-prev_bgg_btn div.stButton > button,
+                    div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"] {
+                        background-color: #212B45 !important;   
+                        color: white !important;
+                        border: 1px solid #333 !important;
+                        width: 120px !important;
+                        height: 38px !important;
+                        font-size: 16px !important;
+                    }
+                    div.stElementContainer.st-key-prev_bgg_btn div.stButton > button:hover,
+                    div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"]:hover {
+                        background-color: #041D5C !important;
+                        transform: scale(1.05);
+                    }
+                    
+                    /* BGG Next button */
+                    div.stElementContainer.st-key-next_bgg_btn div.stButton > button,
+                    div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"] {
+                        background-color: #212B45 !important;   
+                        color: white !important;
+                        border: 1px solid #333 !important;
+                        width: 120px !important;
+                        height: 38px !important;
+                        font-size: 16px !important;
+                    }
+                    div.stElementContainer.st-key-next_bgg_btn div.stButton > button:hover,
+                    div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"]:hover {
+                        background-color: #041D5C !important;
+                        transform: scale(1.05);
+                    }
+                    </style>
+                """, unsafe_allow_html=True)
 
 
 
