@@ -169,7 +169,7 @@ st.markdown("""
             
 /* Target multiselects specifically inside the expander to add top space */
 [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-    margin-top: 1.8rem !important; /* Adjust this value as needed */
+    margin-top: 2.2rem !important; /* Adjust this value as needed */
 }
                 
 
@@ -602,7 +602,7 @@ with st.expander("🎚️ Filters"):
         mechanics_active = len(st.session_state["f_mechanics"]) > 0
 
         st.markdown(
-            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")}; margin:1;">' # margin:0;
+            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")};">' # margin:0;
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
