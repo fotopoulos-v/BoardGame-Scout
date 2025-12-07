@@ -12,7 +12,7 @@ Search and filter board games, see the current hot games, view your owned/rated/
 
 ## 🚀 Try It Live
 
-👉 **[Launch BoardGame Scout on Streamlit →](https://your-streamlit-link.streamlit.app/)**  
+👉 **[Launch BoardGame Scout on Streamlit →](https://boardgame-scout.streamlit.app/)**  
 
 If you enjoy it, consider showing your support — it helps keep the app online and improving!  
 ☕ **[Buy Me a Coffee](https://buymeacoffee.com/vasileios)**  
