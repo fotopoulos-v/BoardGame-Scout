@@ -61,11 +61,12 @@ st.markdown("""
     }
     [data-testid="stExpander"] .stMultiSelect > div {
         min-height: 2px !important;
+        margin-bottom: -1.4rem !important;
+        margin-top: 1.2rem !important;
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
         min-height: 2px !important;
-        margin-bottom: -0.4rem !important;
-        margin-top: 0.2rem !important;
+
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
         min-height: 2px !important;
