@@ -183,6 +183,29 @@ st.markdown("""
     margin-top: 0.4rem !important;
 }
             
+
+/* Fix cursor alignment in text input fields inside expander */
+[data-testid="stExpander"] .stTextInput input {
+    line-height: normal !important;
+    padding-top: 8px !important;
+    padding-bottom: 8px !important;
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* Ensure the input itself has proper vertical alignment */
+[data-testid="stExpander"] .stTextInput div[data-baseweb="input"] {
+    display: flex !important;
+    align-items: center !important;
+}
+
+/* If cursor is still off, try adjusting the input container */
+[data-testid="stExpander"] .stTextInput div[data-baseweb="input"] > div {
+    display: flex !important;
+    align-items: center !important;
+}
+
+
             
     </style>
 """, unsafe_allow_html=True)
