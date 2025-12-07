@@ -175,10 +175,10 @@ st.markdown("""
 #     }
 
             
-    /* Target multiselects specifically inside the expander to add top space */
-    [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-        margin-top: 2.0rem !important; /* Adjust this value as needed */
-    }
+    # /* Target multiselects specifically inside the expander to add top space */
+    # [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+    #     margin-top: 2.0rem !important; /* Adjust this value as needed */
+    # }
                     
 
 
