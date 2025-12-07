@@ -62,7 +62,7 @@ st.markdown("""
     [data-testid="stExpander"] .stMultiSelect > div {
         min-height: 2px !important;
         margin-bottom: -0.4rem !important;
-        # margin-top: 2.2rem !important;
+        margin-top: 2.2rem !important;
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
         min-height: 2px !important;
@@ -181,20 +181,6 @@ st.markdown("""
 /* Add space after the Category multiselect, before the Mechanics label */
 [data-testid="stExpander"] .st-key-f_category + div {
     margin-top: 0.4rem !important;
-}
-
-
-
-/* Fix vertical alignment for text and number input cursors */
-[data-testid="stExpander"] input[data-testid="stNumberInputField"], 
-[data-testid="stExpander"] input[type="text"]:not([data-testid="stMultiSelect"] input) {
-    /* Adjust padding to center the text and cursor */
-    padding-top: 6px !important;    /* Adjust this value */
-    padding-bottom: 6px !important; /* Adjust this value */
-    
-    /* Alternatively, force line-height to match height for better centering */
-    line-height: 18px !important; /* Adjust line-height to center cursor */
-    height: 30px !important;     /* Ensure input container has a fixed height */
 }
 
                   
