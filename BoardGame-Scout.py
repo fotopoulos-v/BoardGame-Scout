@@ -61,8 +61,8 @@ st.markdown("""
     }
     [data-testid="stExpander"] .stMultiSelect > div {
         min-height: 2px !important;
-        margin-bottom: -1.4rem !important;
-        margin-top: 2.2rem !important;
+        margin-bottom: -2.4rem !important;
+        # margin-top: 2.2rem !important;
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
         min-height: 2px !important;
