@@ -164,10 +164,21 @@ st.markdown("""
     margin-bottom: 0.3rem !important;  /* add a bit of space below the label */
 }
 
-/* Number input fields immediately following those labels */
-[data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-    margin-top: 1.0rem !important;  /* push input slightly down */
-}
+# /* Number input fields immediately following those labels */
+# [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
+#     margin-top: 1.0rem !important;  /* push input slightly down */
+# }
+
+            
+/* Target the container for st.number_input, st.text_input, and st.slider */
+    [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div:not(:first-child) > div {
+        /* This rule targets all vertical blocks inside the column that are not the very first one. */
+        /* This should apply the margin to all widgets starting from the second widget down in each column. */
+        margin-top: 1.8rem !important; /* Adjust this value (e.g., 1.5rem to 2.0rem) */
+    }
+
+
+
 
             
     </style>
