@@ -923,64 +923,104 @@ def build_user_similarity_matrix() -> pd.DataFrame:
 
     return sim_df[["username", "other_user", "similarity"]]
 
+# @st.cache_data(show_spinner=False)
+# def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
+#     """
+#     Produce recommendations for a *single* username.
+#     Returns DataFrame with columns:
+#     [game_id, title, predicted_rating, avg_greek_rating, reason]
+#     ready for st.dataframe.
+#     """
+#     import sqlite3, pandas as pd, numpy as np
+
+#     # 1. load similarity matrix (already cached)
+#     sim_df = build_user_similarity_matrix()
+#     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+#     if neighbours.empty:
+#         return pd.DataFrame()   # not enough neighbours
+
+#     # 2. load active user ratings + all Greek ratings
+#     conn = sqlite3.connect(DB_RATINGS)
+#     user_rates = pd.read_sql("SELECT game_id, rating FROM ratings WHERE username = ?", conn, params=(username,))
+#     all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+#     conn.close()
+
+#     seen = set(user_rates["game_id"].tolist())
+
+#     # 3. build neighbourhood rating matrix (only games not seen by active user)
+#     neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
+
+#     # 4. aggregate neighbour scores (weighted average by similarity)
+#     neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
+#     neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
+
+#     recs = (neigh_rates.groupby(["game_id"])
+#                        .agg(w_sum=("weighted", "sum"),
+#                             sim_sum=("similarity", "sum"),
+#                             count=("rating", "count"))
+#                        .reset_index())
+#     recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
+#     recs["pred"] = recs["w_sum"] / recs["sim_sum"]
+#     recs = recs.sort_values("pred", ascending=False).head(n)
+
+#     # 5. enrich with game titles + average Greek rating
+#     conn_bg = sqlite3.connect("boardgames.db")
+#     titles = pd.read_sql("SELECT id, title FROM games", conn_bg)
+#     greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
+#     conn_bg.close()
+
+#     recs = recs.merge(titles, left_on="game_id", right_on="id", how="left")
+#     recs = recs.merge(greek_avg, on="game_id", how="left")
+#     recs["avg_greek"] = recs["avg_greek"].round(2)
+
+#     # 6. build a short textual reason
+#     top_neigh = neighbours.head(5)
+#     reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
+#     recs["reason"] = reason
+
+#     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
+
 @st.cache_data(show_spinner=False)
-def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
+def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame | dict:
     """
     Produce recommendations for a *single* username.
-    Returns DataFrame with columns:
-    [game_id, title, predicted_rating, avg_greek_rating, reason]
-    ready for st.dataframe.
+    Returns DataFrame OR a dict indicating failure reason.
     """
     import sqlite3, pandas as pd, numpy as np
 
     # 1. load similarity matrix (already cached)
     sim_df = build_user_similarity_matrix()
-    neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
-    if neighbours.empty:
-        return pd.DataFrame()   # not enough neighbours
 
     # 2. load active user ratings + all Greek ratings
     conn = sqlite3.connect(DB_RATINGS)
     user_rates = pd.read_sql("SELECT game_id, rating FROM ratings WHERE username = ?", conn, params=(username,))
     all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
     conn.close()
+    
+    # ----------------------------------------------------
+    # 🔥 NEW: Check for minimum required user ratings 🔥
+    # ----------------------------------------------------
+    if len(user_rates) < 10:
+        return {"status": "fail", "reason": "not_enough_ratings", "count": len(user_rates)}
+    # ----------------------------------------------------
+
+    # 3. Get neighbours for the active user
+    neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+    
+    # ----------------------------------------------------
+    # 🔥 NEW: Check for minimum required neighbours 🔥
+    # ----------------------------------------------------
+    if len(neighbours) < NEIGHBOURS:
+        return {"status": "fail", "reason": "not_enough_neighbours", "count": len(neighbours)}
+    # ----------------------------------------------------
 
     seen = set(user_rates["game_id"].tolist())
 
-    # 3. build neighbourhood rating matrix (only games not seen by active user)
-    neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
-
-    # 4. aggregate neighbour scores (weighted average by similarity)
-    neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
-    neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
-
-    recs = (neigh_rates.groupby(["game_id"])
-                       .agg(w_sum=("weighted", "sum"),
-                            sim_sum=("similarity", "sum"),
-                            count=("rating", "count"))
-                       .reset_index())
-    recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
-    recs["pred"] = recs["w_sum"] / recs["sim_sum"]
-    recs = recs.sort_values("pred", ascending=False).head(n)
-
-    # 5. enrich with game titles + average Greek rating
-    conn_bg = sqlite3.connect("boardgames.db")
-    titles = pd.read_sql("SELECT id, title FROM games", conn_bg)
-    greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
-    conn_bg.close()
-
-    recs = recs.merge(titles, left_on="game_id", right_on="id", how="left")
-    recs = recs.merge(greek_avg, on="game_id", how="left")
-    recs["avg_greek"] = recs["avg_greek"].round(2)
-
-    # 6. build a short textual reason
-    top_neigh = neighbours.head(5)
-    reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
-    recs["reason"] = reason
-
+    # 4. build neighbourhood rating matrix (only games not seen by active user)
+    # ... (rest of the function remains the same)
+    
+    # 5. The rest of the function returns the DataFrame:
     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
-
-
 
 
 
@@ -1056,25 +1096,58 @@ if st.session_state.get("show_user_section", False):
         recommend_clicked = st.button("Recommended for you!", key="rec_btn")
 
     # ---------- logic ----------
+    # if recommend_clicked:
+    #     if not username:
+    #         st.error("Please enter a username.")
+    #     else:
+    #         st.session_state["user_sub_view"] = "recommendations"   # ← mark active view
+    #         with st.spinner("Building your personal Greek-guild top list..."):
+    #             rec_df = recommend_games(username, RECOMMEND_COUNT)
+    #             st.session_state["rec_df"] = rec_df          # ← store DF under expected key
+    #         if rec_df.empty:
+    #             st.warning("Not enough ratings yet (need ≥ 10 rated games and ≥ 25 Greek neighbours).")
+    #         else:
+    #             st.success(f"🎯 Here are {len(rec_df)} games you might love!")
+    
+    # # Map display names to API flags
+    # flag_map = {
+    #     "Owned Games": "own",
+    #     "Rated Games": "rated",
+    #     "Wishlist": "wishlist",
+    # }
     if recommend_clicked:
         if not username:
             st.error("Please enter a username.")
         else:
-            st.session_state["user_sub_view"] = "recommendations"   # ← mark active view
+            st.session_state["user_sub_view"] = "recommendations"
             with st.spinner("Building your personal Greek-guild top list..."):
-                rec_df = recommend_games(username, RECOMMEND_COUNT)
-                st.session_state["rec_df"] = rec_df          # ← store DF under expected key
-            if rec_df.empty:
-                st.warning("Not enough ratings yet (need ≥ 10 rated games and ≥ 25 Greek neighbours).")
+                rec_result = recommend_games(username, RECOMMEND_COUNT)
+                st.session_state["rec_df"] = rec_result # Store the result (DF or dict)
+                
+            # 🔥 NEW: Check the return type to determine success or failure reason 🔥
+            if isinstance(rec_result, dict) and rec_result.get("status") == "fail":
+                # Handle failure cases
+                reason = rec_result["reason"]
+                count = rec_result["count"]
+                
+                if reason == "not_enough_ratings":
+                    st.warning(
+                        f"**Not enough personal ratings yet!** You have rated only **{count}** games. "
+                        f"Please rate at least **10** games on BGG to establish your taste profile."
+                    )
+                elif reason == "not_enough_neighbours":
+                    st.warning(
+                        f"**Not enough community overlap!** We found your ratings for {count} Greek users who meet the overlap requirement (need 25). "
+                        f"**Action:** Try rating more popular games to connect with the community!"
+                    )
+            
+            elif isinstance(rec_result, pd.DataFrame) and not rec_result.empty:
+                # Handle success case
+                st.success(f"🎯 Here are {len(rec_result)} games you might love!")
+            
             else:
-                st.success(f"🎯 Here are {len(rec_df)} games you might love!")
-    
-    # Map display names to API flags
-    flag_map = {
-        "Owned Games": "own",
-        "Rated Games": "rated",
-        "Wishlist": "wishlist",
-    }
+                # Fallback for unexpected empty DataFrame (rare)
+                st.warning("Recommendation failed for an unknown reason.")
     
     if reveal_clicked:
         if not username:
