@@ -62,7 +62,6 @@ st.markdown("""
     [data-testid="stExpander"] .stMultiSelect > div {
         min-height: 2px !important;
         margin-bottom: -0.4rem !important;
-        margin-top: 2.2rem !important;
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
         min-height: 2px !important;
@@ -117,7 +116,7 @@ st.markdown("""
 
  /* Compact filters inside the expander */
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
-        gap: 0.1rem !important;
+        gap: 1.1rem !important;
     }
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
