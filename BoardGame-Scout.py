@@ -174,7 +174,7 @@ st.markdown("""
                 
 
 /* -------------------------------------------------------------------------- */
-    /* GLOBAL COLORS AND INPUT BASICS */
+    /* GLOBAL COLORS AND INPUT BASICS (UNCHANGED) */
     /* -------------------------------------------------------------------------- */
 
     /* Sidebar background */
@@ -246,9 +246,10 @@ st.markdown("""
     }
     
     /* Apply consistent top margin to ALL custom labels (.stMarkdown) from the second filter down */
+    /* This rule controls the gap BETWEEN filter groups (e.g., Min Players and Max Players) */
     [data-testid="stExpander"] .stColumn > div > div:not(:first-child) .stMarkdown {
-        margin-top: 1.5rem !important; /* Consistent space between filter groups */
-        margin-bottom: 0.2rem !important; /* Small space between label and its input/widget */
+        margin-top: 1.2rem !important; /* Slightly reduced for compactness */
+        margin-bottom: 0.1rem !important; /* VERY SMALL space between label and its input/widget */
     }
 
     /* Ensure the first label in each column has no top margin */
@@ -256,16 +257,22 @@ st.markdown("""
         margin-top: 0 !important;
     }
     
-    /* MODIFIED: Reduce space below the custom label for compactness */
-    [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-        margin-bottom: 0.1rem !important;  /* Changed from 0.3rem to 0.1rem for compactness */
+    /* MODIFIED: Reduce space below the custom label for compactness and alignment */
+    /* This targets the <div> wrapper around your st.markdown with the inline color style */
+    [data-testid="stExpander"] .stColumn div[style*="color:"] {
+        margin-bottom: 0.1rem !important;  /* Adjusted for compactness */
     }
     
-    /* REMOVED: The previous specific 1.8rem margin for multiselects to rely on unified label spacing */
+    /* NEW FIX: Target the container of the multiselect to ensure it respects the zero margin */
+    /* This overrides any default spacing the complex multiselect component may have */
+    [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+        margin-top: 0 !important; 
+        margin-bottom: 0 !important;
+    }
     
     
     /* -------------------------------------------------------------------------- */
-    /* MULTISELECT SPECIFIC ADJUSTMENTS (UNCHANGED HEIGHT) */
+    /* MULTISELECT SPECIFIC ADJUSTMENTS (HEIGHT) */
     /* -------------------------------------------------------------------------- */
             
     /* Multiselect container sizing and internal spacing */
