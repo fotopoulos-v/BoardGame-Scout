@@ -174,7 +174,7 @@ st.markdown("""
                 
 
 
-            /* -------------------------------------------------------------------------- */
+    /* -------------------------------------------------------------------------- */
     /* GLOBAL COLORS AND INPUT BASICS */
     /* -------------------------------------------------------------------------- */
 
@@ -261,7 +261,7 @@ st.markdown("""
     
     /* Small space below the custom label for inline styles (e.g., used for active color) */
     [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-        margin-bottom: 0.3rem !important;
+        margin-bottom: 0.1rem !important;
     }
 
 
@@ -695,7 +695,7 @@ with st.expander("🎚️ Filters"):
                 st.session_state[key] = ""
             active = st.session_state[key].strip() != ""
             st.markdown(
-                f'<div style="color:{("#00FFFF" if active else "inherit")}; margin:0;">'
+                f'<div style="color:{("#00FFFF" if active else "inherit")}; ">' # margin:0;
                 f'{label + " ✅" if active else label}</div>',
                 unsafe_allow_html=True
             )
@@ -710,7 +710,7 @@ with st.expander("🎚️ Filters"):
         category_active = len(st.session_state["f_category"]) > 0
 
         st.markdown(
-            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; margin:0;">'
+            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; ">' # margin:0;
             f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
             unsafe_allow_html=True
         )
