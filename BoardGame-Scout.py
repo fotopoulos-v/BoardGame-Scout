@@ -70,7 +70,7 @@ st.markdown("""
         padding-top: 6px !important;
         padding-bottom: 6px !important;
             
-        margin-bottom: -1.4rem !important;
+        # margin-bottom: -1.4rem !important;
         margin-top: 0.2rem !important;
     }
             
