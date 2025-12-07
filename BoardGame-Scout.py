@@ -176,7 +176,7 @@ st.markdown("""
 
 /* Add spacing specifically for the Mechanics multiselect label */
 [data-testid="stExpander"] .st-key-f_mechanics .stMarkdown {
-    margin-top: 1.5rem !important;
+    margin-top: 2.5rem !important;
 }            
 
             
