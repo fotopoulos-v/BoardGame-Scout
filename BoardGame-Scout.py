@@ -69,6 +69,9 @@ st.markdown("""
         min-height: 2px !important;
         padding-top: 6px !important;
         padding-bottom: 6px !important;
+            
+        margin-bottom: -1.4rem !important;
+        margin-top: 0.2rem !important;
     }
             
 
