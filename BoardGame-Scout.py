@@ -180,7 +180,7 @@ st.markdown("""
 
 /* Add space after the Category multiselect, before the Mechanics label */
 [data-testid="stExpander"] .st-key-f_category + div {
-    margin-top: 1.5rem !important;
+    margin-top: 0.5rem !important;
 }
             
             
