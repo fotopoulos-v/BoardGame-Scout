@@ -169,7 +169,7 @@ st.markdown("""
             
 /* Target multiselects specifically inside the expander to add top space */
 [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-    margin-top: 1.9rem !important; /* Adjust this value as needed */
+    margin-top: 1.85rem !important; /* Adjust this value as needed */
 }
 
 /* Add spacing to the Mechanics element container within the expander */
