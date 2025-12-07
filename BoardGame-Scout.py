@@ -157,12 +157,12 @@ st.markdown("""
 
 /* Labels inside the expander columns */
 [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-    margin-bottom: 0.8rem !important;  /* add a bit of space below the label */
+    margin-bottom: 0.3rem !important;  /* add a bit of space below the label */
 }
 
 /* Number input fields immediately following those labels */
 [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-    margin-top: 1.0rem !important;  /* push input slightly down */
+    margin-top: 0.5rem !important;  /* push input slightly down */
 }
 
             
