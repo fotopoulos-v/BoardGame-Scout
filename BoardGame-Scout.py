@@ -1018,6 +1018,18 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame | d
 
     # 4. build neighbourhood rating matrix (only games not seen by active user)
     # ... (rest of the function remains the same)
+    # 4. aggregate neighbour scores (weighted average by similarity)
+    neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
+    neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
+
+    recs = (neigh_rates.groupby(["game_id"])
+                       .agg(w_sum=("weighted", "sum"),
+                            sim_sum=("similarity", "sum"),
+                            count=("rating", "count"))
+                       .reset_index())
+    recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
+    recs["pred"] = recs["w_sum"] / recs["sim_sum"]
+    recs = recs.sort_values("pred", ascending=False).head(n)
     
     # 5. The rest of the function returns the DataFrame:
     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
@@ -1115,39 +1127,42 @@ if st.session_state.get("show_user_section", False):
         "Rated Games": "rated",
         "Wishlist": "wishlist",
     }
+
+
+    # ---------- logic ----------
     if recommend_clicked:
-        if not username:
-            st.error("Please enter a username.")
-        else:
-            st.session_state["user_sub_view"] = "recommendations"
-            with st.spinner("Building your personal Greek-guild top list..."):
-                rec_result = recommend_games(username, RECOMMEND_COUNT)
-                st.session_state["rec_df"] = rec_result # Store the result (DF or dict)
-                
-            # 🔥 NEW: Check the return type to determine success or failure reason 🔥
-            if isinstance(rec_result, dict) and rec_result.get("status") == "fail":
-                # Handle failure cases
-                reason = rec_result["reason"]
-                count = rec_result["count"]
-                
-                if reason == "not_enough_ratings":
-                    st.warning(
-                        f"**Not enough personal ratings yet!** You have rated only **{count}** games. "
-                        f"Please rate at least **10** games on BGG to establish your taste profile."
-                    )
-                elif reason == "not_enough_neighbours":
-                    st.warning(
-                        f"**Not enough community overlap!** We found your ratings for {count} Greek users who meet the overlap requirement (need 25). "
-                        f"**Action:** Try rating more popular games to connect with the community!"
-                    )
-            
-            elif isinstance(rec_result, pd.DataFrame) and not rec_result.empty:
-                # Handle success case
-                st.success(f"🎯 Here are {len(rec_result)} games you might love!")
-            
+            if not username:
+                st.error("Please enter a username.")
             else:
-                # Fallback for unexpected empty DataFrame (rare)
-                st.warning("Recommendation failed for an unknown reason.")
+                st.session_state["user_sub_view"] = "recommendations"
+                with st.spinner("Building your personal Greek-guild top list..."):
+                    rec_result = recommend_games(username, RECOMMEND_COUNT)
+                    st.session_state["rec_df"] = rec_result # Store the result (DF or dict)
+                    
+                # 🔥 NEW: Check the return type to determine success or failure reason 🔥
+                if isinstance(rec_result, dict) and rec_result.get("status") == "fail":
+                    # Handle failure cases
+                    reason = rec_result["reason"]
+                    count = rec_result["count"]
+                    
+                    if reason == "not_enough_ratings":
+                        st.warning(
+                            f"**Not enough personal ratings yet!** You have rated only **{count}** games. "
+                            f"Please rate at least **10** games on BGG to establish your taste profile."
+                        )
+                    elif reason == "not_enough_neighbours":
+                        st.warning(
+                            f"**Not enough community overlap!** We found your ratings for {count} Greek users who meet the overlap requirement (need 25). "
+                            f"**Action:** Try rating more popular games to connect with the community!"
+                        )
+                
+                elif isinstance(rec_result, pd.DataFrame) and not rec_result.empty:
+                    # Handle success case
+                    st.success(f"🎯 Here are {len(rec_result)} games you might love!")
+                
+                else:
+                    # Fallback for unexpected empty DataFrame (rare)
+                    st.warning("Recommendation failed for an unknown reason.")
     
     if reveal_clicked:
         if not username:
