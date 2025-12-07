@@ -174,7 +174,7 @@ st.markdown("""
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div:not(:first-child) > div {
         /* This rule targets all vertical blocks inside the column that are not the very first one. */
         /* This should apply the margin to all widgets starting from the second widget down in each column. */
-        margin-top: 1.8rem !important; /* Adjust this value (e.g., 1.5rem to 2.0rem) */
+        margin-top: 0.8rem !important; /* Adjust this value (e.g., 1.5rem to 2.0rem) */
     }
 
 
