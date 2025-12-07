@@ -172,12 +172,17 @@ st.markdown("""
     margin-top: 1.9rem !important; /* Adjust this value as needed */
 }
 
-/* Add spacing to the Mechanics element container within the expander */
-[data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
-    margin-top: 1.5rem !important;
-    padding-top: 0.5rem !important;
-}       
+# /* Add spacing to the Mechanics element container within the expander */
+# [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
+#     margin-top: 1.5rem !important;
+#     padding-top: 0.5rem !important;
+# }       
 
+/* Add top margin to the entire Mechanics container */
+[data-testid="stExpander"] .st-key-f_mechanics {
+    margin-top: 1.5rem !important;
+}
+            
             
     </style>
 """, unsafe_allow_html=True)
