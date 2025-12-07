@@ -166,7 +166,7 @@ st.markdown("""
 
 /* Number input fields immediately following those labels */
 [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-    margin-top: 0.65rem !important;  /* push input slightly down */
+    margin-top: 1.0rem !important;  /* push input slightly down */
 }
 
             
