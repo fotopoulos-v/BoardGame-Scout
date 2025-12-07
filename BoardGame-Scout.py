@@ -1109,12 +1109,12 @@ if st.session_state.get("show_user_section", False):
     #         else:
     #             st.success(f"🎯 Here are {len(rec_df)} games you might love!")
     
-    # # Map display names to API flags
-    # flag_map = {
-    #     "Owned Games": "own",
-    #     "Rated Games": "rated",
-    #     "Wishlist": "wishlist",
-    # }
+    # Map display names to API flags
+    flag_map = {
+        "Owned Games": "own",
+        "Rated Games": "rated",
+        "Wishlist": "wishlist",
+    }
     if recommend_clicked:
         if not username:
             st.error("Please enter a username.")
