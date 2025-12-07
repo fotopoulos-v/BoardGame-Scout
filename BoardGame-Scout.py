@@ -178,10 +178,10 @@ st.markdown("""
     padding-top: 0.0rem !important;
 }       
 
-# /* Add top margin to the entire Mechanics container */
-# [data-testid="stExpander"] .st-key-f_mechanics {
-#     margin-top: 1.5rem !important;
-# }
+/* Add space after the Category multiselect, before the Mechanics label */
+[data-testid="stExpander"] .st-key-f_category + div {
+    margin-top: 1.5rem !important;
+}
             
             
     </style>
