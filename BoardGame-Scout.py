@@ -44,49 +44,167 @@ if not os.path.exists(DB_PATH):
 st.markdown("""
     <style>
     
+#     /* Sidebar background */
+#     section[data-testid="stSidebar"] { background-color: #2B060A; color: #FFB703; }
+
+#     /* Main background */
+#     .stApp { background-color: #02021A !important; }
+#     input, textarea, select, div[data-baseweb="input"] input { color: rgba(200, 200, 200, 0.45) !important; }
+#     ::placeholder { color: rgba(200, 200, 200, 0.35) !important; }
+#     input:focus, textarea:focus, select:focus, div[data-baseweb="input"] input:focus { color: #FAFAFA !important; }
+
+            
+
+#     /* Force multiselect to match text input height */
+#     [data-testid="stExpander"] .stMultiSelect {
+#         margin: 0 !important;
+#     }
+#     [data-testid="stExpander"] .stMultiSelect > div {
+#         min-height: 2px !important;
+#         margin-bottom: -0.4rem !important;
+#         # margin-top: 2.2rem !important;
+#     }
+#     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
+#         min-height: 2px !important;
+
+#     }
+#     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
+#         min-height: 4px !important;
+#         padding-top: 5px !important;
+#         padding-bottom: 5px !important;  
+#     }
+            
+
+#         /* Remove text cursor from multiselect - more specific */
+#         div[data-testid="stMultiSelect"] input,
+#         div[data-testid="stMultiSelect"] input:hover,
+#         div[data-testid="stMultiSelect"] input:focus,
+#         div[data-testid="stMultiSelect"] div,
+#         div[data-testid="stMultiSelect"] [data-baseweb="select"],
+#         div[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+#             cursor: pointer !important;
+#         }   
+
+            
+#     /* Large buttons */
+#     div.stButton > button {
+#         width: 120px !important;
+#         height: 48px !important;
+#         font-size: 28px !important;
+#         font-weight: bold !important;
+#         border-radius: 10px !important;
+#         color: white !important;
+#         transition: all 0.2s ease-in-out;
+#     }
+#     /* Green search button */
+#     div.stButton > button[kind="primary"] { background-color: #1B5E20 !important; }
+#     div.stButton > button[kind="primary"]:hover { background-color: #00850C !important; transform: scale(1.05); }
+#     /* Hot Games button - Purple (tertiary) */
+#     div.stButton > button[kind="tertiary"] { background-color: #7C4794 !important; }
+#     div.stButton > button[kind="tertiary"]:hover { background-color: #5F047D !important; transform: scale(1.05); }
+#     /* Clear/Reset button - Red (secondary or default) */
+#     div.stButton > button[kind="secondary"],
+#     div[data-testid="stButton"] > button:not([kind="primary"]):not([kind="tertiary"]) { background-color: #991D12 !important; }
+#     div.stButton > button[kind="secondary"]:hover,
+#     div[data-testid="stButton"] > button:not([kind="primary"]):not([kind="tertiary"]):hover { background-color: #F70202 !important; transform: scale(1.05); }
+
+
+            
+#     /* Narrow search input container */
+#     div.stTextInput[data-testid="stTextInput"] { max-width: 400px !important; margin-left:0 !important; }
+
+
+
+#  /* Compact filters inside the expander */
+#     [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
+#         gap: 0.1rem !important;
+#     }
+#     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
+#         padding: 0; 
+#         margin: 0; 
+#     }
+
+#     /* Compact widget spacing */
+#     [data-testid="stExpander"] .stNumberInput,
+#     [data-testid="stExpander"] .stSlider,
+#     [data-testid="stExpander"] .stSelectbox,
+#     [data-testid="stExpander"] .stTextInput {
+#         margin: 0 !important;
+#     }
+
+#     /* Label spacing */
+#     [data-testid="stExpander"] .stMarkdown { 
+#         margin-bottom: -1.4rem !important;
+#         margin-top: 0.2rem !important;
+#     }
+
+#     /* First element in each column */
+#     [data-testid="stExpander"] .stColumn > div > div:first-child .stMarkdown {
+#         margin-top: 0 !important;
+#     }
+
+#     /* Reduce space between input → next label */
+#     [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
+#     [data-testid="stExpander"] .stSlider + div .stMarkdown,
+#     [data-testid="stExpander"] .stSelectbox + div .stMarkdown {
+#         margin-top: 0.7rem !important;
+#     }
+
+#     /* Active filter highlight */
+#     .filter-label-active {
+#         color: #00FFFF !important;
+#         font-weight: bold;
+#     }
+
+# /* Labels inside the expander columns */
+# [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
+#     margin-bottom: 0.3rem !important;  /* add a bit of space below the label */
+# }
+
+# /* Number input fields immediately following those labels */
+# [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
+#     margin-top: 1.0rem !important;  /* push input slightly down */
+# }
+
+            
+# /* Target multiselects specifically inside the expander to add top space */
+# [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+#     margin-top: 1.8rem !important; /* Adjust this value as needed */
+# }
+                
+
+
+            /* -------------------------------------------------------------------------- */
+    /* GLOBAL COLORS AND INPUT BASICS */
+    /* -------------------------------------------------------------------------- */
+
     /* Sidebar background */
     section[data-testid="stSidebar"] { background-color: #2B060A; color: #FFB703; }
 
     /* Main background */
     .stApp { background-color: #02021A !important; }
+    
+    /* Input field text color (default/inactive) */
     input, textarea, select, div[data-baseweb="input"] input { color: rgba(200, 200, 200, 0.45) !important; }
     ::placeholder { color: rgba(200, 200, 200, 0.35) !important; }
+    /* Input field text color (focused/active) */
     input:focus, textarea:focus, select:focus, div[data-baseweb="input"] input:focus { color: #FAFAFA !important; }
+    
+    /* Narrow search input container (optional) */
+    div.stTextInput[data-testid="stTextInput"] { max-width: 400px !important; margin-left:0 !important; }
+    
+    /* Active filter highlight */
+    .filter-label-active {
+        color: #00FFFF !important;
+        font-weight: bold;
+    }
 
+
+    /* -------------------------------------------------------------------------- */
+    /* BUTTON STYLING */
+    /* -------------------------------------------------------------------------- */
             
-
-    /* Force multiselect to match text input height */
-    [data-testid="stExpander"] .stMultiSelect {
-        margin: 0 !important;
-    }
-    [data-testid="stExpander"] .stMultiSelect > div {
-        min-height: 2px !important;
-        margin-bottom: -0.4rem !important;
-        # margin-top: 2.2rem !important;
-    }
-    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 2px !important;
-
-    }
-    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-        min-height: 4px !important;
-        padding-top: 5px !important;
-        padding-bottom: 5px !important;  
-    }
-            
-
-        /* Remove text cursor from multiselect - more specific */
-        div[data-testid="stMultiSelect"] input,
-        div[data-testid="stMultiSelect"] input:hover,
-        div[data-testid="stMultiSelect"] input:focus,
-        div[data-testid="stMultiSelect"] div,
-        div[data-testid="stMultiSelect"] [data-baseweb="select"],
-        div[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
-            cursor: pointer !important;
-        }   
-
-            
-    /* Large buttons */
+    /* Large buttons - Base style */
     div.stButton > button {
         width: 120px !important;
         height: 48px !important;
@@ -96,7 +214,7 @@ st.markdown("""
         color: white !important;
         transition: all 0.2s ease-in-out;
     }
-    /* Green search button */
+    /* Green search button (primary) */
     div.stButton > button[kind="primary"] { background-color: #1B5E20 !important; }
     div.stButton > button[kind="primary"]:hover { background-color: #00850C !important; transform: scale(1.05); }
     /* Hot Games button - Purple (tertiary) */
@@ -108,79 +226,77 @@ st.markdown("""
     div.stButton > button[kind="secondary"]:hover,
     div[data-testid="stButton"] > button:not([kind="primary"]):not([kind="tertiary"]):hover { background-color: #F70202 !important; transform: scale(1.05); }
 
-
-            
-    /* Narrow search input container */
-    div.stTextInput[data-testid="stTextInput"] { max-width: 400px !important; margin-left:0 !important; }
-
-
-
- /* Compact filters inside the expander */
-    [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
-        gap: 0.1rem !important;
-    }
+    
+    /* -------------------------------------------------------------------------- */
+    /* UNIFIED FILTER SPACING (INSIDE EXPANDER) */
+    /* This section creates consistent gaps between all filter groups. */
+    /* -------------------------------------------------------------------------- */
+    
+    /* Reset all vertical blocks inside the expander to ensure no default margins apply */
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
-        padding: 0; 
-        margin: 0; 
+        padding: 0 !important; 
+        margin: 0 !important; 
     }
 
-    /* Compact widget spacing */
+    /* Set ALL widget inputs (number, text, slider, multiselect) to zero margins */
     [data-testid="stExpander"] .stNumberInput,
+    [data-testid="stExpander"] .stTextInput,
     [data-testid="stExpander"] .stSlider,
-    [data-testid="stExpander"] .stSelectbox,
-    [data-testid="stExpander"] .stTextInput {
-        margin: 0 !important;
+    [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+    
+    /* Apply consistent top margin to ALL custom labels (.stMarkdown) from the second filter down */
+    /* This creates a UNIFORM GAP BETWEEN filter groups */
+    [data-testid="stExpander"] .stColumn > div > div:not(:first-child) .stMarkdown {
+        margin-top: 1.5rem !important; /* Consistent space between filter groups */
+        margin-bottom: 0.2rem !important; /* Small space between label and its input/widget */
     }
 
-    /* Label spacing */
-    [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: -1.4rem !important;
-        margin-top: 0.2rem !important;
-    }
-
-    /* First element in each column */
+    /* Ensure the first label in each column has no top margin */
     [data-testid="stExpander"] .stColumn > div > div:first-child .stMarkdown {
         margin-top: 0 !important;
     }
-
-    /* Reduce space between input → next label */
-    [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
-    [data-testid="stExpander"] .stSlider + div .stMarkdown,
-    [data-testid="stExpander"] .stSelectbox + div .stMarkdown {
-        margin-top: 0.7rem !important;
+    
+    /* Small space below the custom label for inline styles (e.g., used for active color) */
+    [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
+        margin-bottom: 0.3rem !important;
     }
 
-    /* Active filter highlight */
-    .filter-label-active {
-        color: #00FFFF !important;
-        font-weight: bold;
-    }
 
-/* Labels inside the expander columns */
-[data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-    margin-bottom: 0.3rem !important;  /* add a bit of space below the label */
-}
-
-/* Number input fields immediately following those labels */
-[data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-    margin-top: 1.0rem !important;  /* push input slightly down */
-}
-
+    /* -------------------------------------------------------------------------- */
+    /* MULTISELECT SPECIFIC ADJUSTMENTS */
+    /* -------------------------------------------------------------------------- */
             
-# /* Target the container for st.number_input, st.text_input, and st.slider */
-#     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div:not(:first-child) > div {
-#         /* This rule targets all vertical blocks inside the column that are not the very first one. */
-#         /* This should apply the margin to all widgets starting from the second widget down in each column. */
-#         margin-top: 0.1rem !important; /* Adjust this value (e.g., 1.5rem to 2.0rem) */
-#     }
-
-            
-    /* Target multiselects specifically inside the expander to add top space */
-    [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-        margin-top: 1.8rem !important; /* Adjust this value as needed */
+    /* Multiselect container sizing and internal spacing */
+    [data-testid="stExpander"] .stMultiSelect {
+        margin: 0 !important;
     }
-                    
-
+    [data-testid="stExpander"] .stMultiSelect > div {
+        min-height: 2px !important;
+        /* Using negative margin here to pull the next element up for a tighter stack */
+        margin-bottom: -0.4rem !important; 
+    }
+    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
+        min-height: 2px !important;
+    }
+    /* Inner padding to control the component height */
+    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
+        min-height: 4px !important;
+        padding-top: 5px !important;  /* Controls height */
+        padding-bottom: 5px !important;  /* Controls height */
+    }
+            
+    /* Remove text cursor from multiselect - more specific */
+    div[data-testid="stMultiSelect"] input,
+    div[data-testid="stMultiSelect"] input:hover,
+    div[data-testid="stMultiSelect"] input:focus,
+    div[data-testid="stMultiSelect"] div,
+    div[data-testid="stMultiSelect"] [data-baseweb="select"],
+    div[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
+        cursor: pointer !important;
+    }
 
             
     </style>
