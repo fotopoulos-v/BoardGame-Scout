@@ -173,8 +173,7 @@ st.markdown("""
 # }
                 
 
-
-    /* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
     /* GLOBAL COLORS AND INPUT BASICS */
     /* -------------------------------------------------------------------------- */
 
@@ -201,7 +200,7 @@ st.markdown("""
 
 
     /* -------------------------------------------------------------------------- */
-    /* BUTTON STYLING */
+    /* BUTTON STYLING (UNCHANGED) */
     /* -------------------------------------------------------------------------- */
             
     /* Large buttons - Base style */
@@ -228,8 +227,7 @@ st.markdown("""
 
     
     /* -------------------------------------------------------------------------- */
-    /* UNIFIED FILTER SPACING (INSIDE EXPANDER) */
-    /* This section creates consistent gaps between all filter groups. */
+    /* UNIFIED FILTER SPACING (INSIDE EXPANDER) - MODIFIED */
     /* -------------------------------------------------------------------------- */
     
     /* Reset all vertical blocks inside the expander to ensure no default margins apply */
@@ -248,7 +246,6 @@ st.markdown("""
     }
     
     /* Apply consistent top margin to ALL custom labels (.stMarkdown) from the second filter down */
-    /* This creates a UNIFORM GAP BETWEEN filter groups */
     [data-testid="stExpander"] .stColumn > div > div:not(:first-child) .stMarkdown {
         margin-top: 1.5rem !important; /* Consistent space between filter groups */
         margin-bottom: 0.2rem !important; /* Small space between label and its input/widget */
@@ -259,14 +256,16 @@ st.markdown("""
         margin-top: 0 !important;
     }
     
-    /* Small space below the custom label for inline styles (e.g., used for active color) */
+    /* MODIFIED: Reduce space below the custom label for compactness */
     [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-        margin-bottom: 0.1rem !important;
+        margin-bottom: 0.1rem !important;  /* Changed from 0.3rem to 0.1rem for compactness */
     }
-
-
+    
+    /* REMOVED: The previous specific 1.8rem margin for multiselects to rely on unified label spacing */
+    
+    
     /* -------------------------------------------------------------------------- */
-    /* MULTISELECT SPECIFIC ADJUSTMENTS */
+    /* MULTISELECT SPECIFIC ADJUSTMENTS (UNCHANGED HEIGHT) */
     /* -------------------------------------------------------------------------- */
             
     /* Multiselect container sizing and internal spacing */
