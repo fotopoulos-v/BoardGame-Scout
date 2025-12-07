@@ -132,7 +132,7 @@ st.markdown("""
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
         margin-bottom: -1.4rem !important;
-        margin-top: 2.2rem !important;
+        margin-top: 0.2rem !important;
     }
 
     /* First element in each column */
