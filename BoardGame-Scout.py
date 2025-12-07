@@ -182,31 +182,22 @@ st.markdown("""
 [data-testid="stExpander"] .st-key-f_category + div {
     margin-top: 0.4rem !important;
 }
-            
 
-/* Fix cursor alignment in text input fields inside expander */
-[data-testid="stExpander"] .stTextInput input {
-    line-height: normal !important;
-    padding-top: 8px !important;
-    padding-bottom: 8px !important;
-    display: flex !important;
-    align-items: center !important;
+
+
+/* Fix vertical alignment for text and number input cursors */
+[data-testid="stExpander"] input[data-testid="stNumberInputField"], 
+[data-testid="stExpander"] input[type="text"]:not([data-testid="stMultiSelect"] input) {
+    /* Adjust padding to center the text and cursor */
+    padding-top: 6px !important;    /* Adjust this value */
+    padding-bottom: 6px !important; /* Adjust this value */
+    
+    /* Alternatively, force line-height to match height for better centering */
+    line-height: 18px !important; /* Adjust line-height to center cursor */
+    height: 30px !important;     /* Ensure input container has a fixed height */
 }
 
-/* Ensure the input itself has proper vertical alignment */
-[data-testid="stExpander"] .stTextInput div[data-baseweb="input"] {
-    display: flex !important;
-    align-items: center !important;
-}
-
-/* If cursor is still off, try adjusting the input container */
-[data-testid="stExpander"] .stTextInput div[data-baseweb="input"] > div {
-    display: flex !important;
-    align-items: center !important;
-}
-
-
-            
+                  
     </style>
 """, unsafe_allow_html=True)
 
