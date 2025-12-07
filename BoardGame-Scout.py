@@ -174,7 +174,7 @@ st.markdown("""
 
 /* Add spacing to the Mechanics element container within the expander */
 [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
-    margin-top: 0.5rem !important;
+    margin-top: 0.0rem !important;
     padding-top: 0.5rem !important;
 }       
 
