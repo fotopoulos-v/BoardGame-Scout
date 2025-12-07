@@ -63,7 +63,7 @@ st.markdown("""
         min-height: 58px !important;
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 58px !important;
+        min-height: 38px !important;
     }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
         min-height: 38px !important;
