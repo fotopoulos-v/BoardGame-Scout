@@ -9,111 +9,98 @@ on:
 jobs:
   update-database:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v4
-    
-    - name: Set up Python
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-    
-    - name: Install Chrome
-      run: |
-        wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
-        sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
-        sudo apt-get update
-        sudo apt-get install -y google-chrome-stable
-    
-    - name: Install Python dependencies
-      run: |
-        pip install requests selenium pandas
-    
-    # Step 1: Download CSV
-    - name: Download BGG CSV
-      env:
-        BGG_USERNAME: ${{ secrets.BGG_USERNAME }}
-        BGG_PASSWORD: ${{ secrets.BGG_PASSWORD }}
-      run: |
-        python bg_ranks_csv_download.py
-    
-    # Step 2: Unzip CSV
-    - name: Unzip CSV file
-      run: |
-        unzip -o boardgames_ranks.zip
-        ls -lh boardgames_ranks.csv
-    
-    # Step 3: Download database from releases
-    - name: Download database from releases
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Get the specific release by tag
-        RELEASE_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/tags/updated_boardgame_database")
-        
-        # Extract download URL for boardgames_db.zip
-        ZIP_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name=="boardgames_db.zip") | .browser_download_url')
-        
-        if [ -z "$ZIP_URL" ] || [ "$ZIP_URL" == "null" ]; then
-          echo "Error: boardgames_db.zip not found in release 'updated_boardgame_database'"
-          exit 1
-        fi
-        
-        echo "Downloading database from: $ZIP_URL"
-        curl -L -o boardgames_db.zip "$ZIP_URL"
-        
-        # Unzip the database
-        unzip -o boardgames_db.zip
-        
-        # Verify extraction
-        if [ ! -f boardgames.db ]; then
-          echo "Error: boardgames.db not found after unzipping"
-          exit 1
-        fi
-        
-        ls -lh boardgames.db
-    
-    # Step 4: Update database
-    - name: Update database with new data
-      env:
-        BGG_TOKEN: ${{ secrets.BGG_TOKEN }}
-      run: |
-        python enrich_bgg_db_v3.py
-    
-    # Step 5: Get current date for release notes
-    - name: Get current date
-      id: date
-      run: |
-        echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
-        echo "datetime=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
-    
-    # Step 6: Update the release with new database
-    - name: Update release with new database
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        # Zip the updated database
-        zip boardgames_db.zip boardgames.db
-        
-        # Upload new database to the existing release (overwrites old one)
-        echo "Uploading updated database..."
-        gh release upload updated_boardgame_database boardgames_db.zip --clobber
-        
-        # Update release notes
-        gh release edit updated_boardgame_database \
-          --notes "Latest automated database update - ${{ steps.date.outputs.datetime }}"
-        
-        echo "✅ Database updated in release 'updated_boardgame_database'"
-    
-    # Step 7: Upload artifacts for debugging
-    - name: Upload artifacts
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: update-artifacts-${{ steps.date.outputs.date }}
-        path: |
-          boardgames_ranks.csv
-          boardgames.db
-        retention-days: 7
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Chrome
+        run: |
+          wget -q -O - https://dl-ssl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+          sudo sh -c 'echo "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" >> /etc/apt/sources.list.d/google-chrome.list'
+          sudo apt-get update
+          sudo apt-get install -y google-chrome-stable
+
+      - name: Install Python dependencies
+        run: |
+          pip install requests selenium pandas
+
+      # Step 1: Download CSV
+      - name: Download BGG CSV
+        env:
+          BGG_USERNAME: ${{ secrets.BGG_USERNAME }}
+          BGG_PASSWORD: ${{ secrets.BGG_PASSWORD }}
+        run: |
+          python bg_ranks_csv_download.py
+
+      # Step 2: Unzip CSV
+      - name: Unzip CSV file
+        run: |
+          unzip -o boardgames_ranks.zip
+          ls -lh boardgames_ranks.csv
+
+      # Step 3: Download database from releases
+      - name: Download database from releases
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Downloading boardgames_db.zip from release..."
+
+          gh release download updated_boardgame_database \
+            --pattern boardgames_db.zip \
+            --clobber
+
+          unzip -o boardgames_db.zip
+
+          if [ ! -f boardgames.db ]; then
+            echo "Error: boardgames.db not found after unzip"
+            exit 1
+          fi
+
+          ls -lh boardgames.db
+
+      # Step 4: Update database
+      - name: Update database with new data
+        env:
+          BGG_TOKEN: ${{ secrets.BGG_TOKEN }}
+        run: |
+          python enrich_bgg_db_v3.py
+
+      # Step 5: Get current date for release notes
+      - name: Get current date
+        id: date
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "datetime=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
+
+      # Step 6: Update the release with new database
+      - name: Update release with new database
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          zip boardgames_db.zip boardgames.db
+
+          echo "Uploading updated database..."
+          gh release upload updated_boardgame_database boardgames_db.zip --clobber
+
+          gh release edit updated_boardgame_database \
+            --notes "Latest automated database update - ${{ steps.date.outputs.datetime }}"
+
+          echo "✅ Database updated in release 'updated_boardgame_database'"
+
+      # Step 7: Upload artifacts for debugging
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: update-artifacts-${{ steps.date.outputs.date }}
+          path: |
+            boardgames_ranks.csv
+            boardgames.db
+          retention-days: 7
+
