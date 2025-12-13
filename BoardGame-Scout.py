@@ -33,46 +33,58 @@ GITHUB_REPO = "fotopoulos-v/BoardGame-Scout-APP"
 def download_database():
     """Download the latest database from GitHub releases if not present or outdated."""
     
+    DB_PATH = "boardgames.db"
+    ZIP_PATH = "boardgames_db.zip"
+    GITHUB_REPO = "YOUR-USERNAME/BoardGame-Scout-APP"  # UPDATE THIS!
+    RELEASE_TAG = "updated_boardgame_database"
+    
     # Check if database exists and is recent (less than 24 hours old)
     if os.path.exists(DB_PATH):
         file_age = time.time() - os.path.getmtime(DB_PATH)
         if file_age < 86400:  # 24 hours
             print(f"✅ Using existing database (age: {file_age/3600:.1f} hours)")
             return DB_PATH
-        else:
-            print(f"⏰ Database is {file_age/3600:.1f} hours old, downloading update...")
     
     print("📥 Downloading latest database from GitHub releases...")
     
     try:
-        # Get latest release info
-        release_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/latest"
+        # Get specific release info
+        release_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{RELEASE_TAG}"
         response = requests.get(release_url, timeout=30)
         response.raise_for_status()
         
         release_data = response.json()
         
-        # Find database asset
-        db_asset = None
+        # Find database zip asset
+        zip_asset = None
         for asset in release_data.get('assets', []):
-            if asset['name'] == 'boardgames.db':
-                db_asset = asset
+            if asset['name'] == 'boardgames_db.zip':
+                zip_asset = asset
                 break
         
-        if not db_asset:
-            raise Exception("Database not found in latest release")
+        if not zip_asset:
+            raise Exception("boardgames_db.zip not found in release")
         
-        # Download database
-        db_url = db_asset['browser_download_url']
+        # Download zip
+        zip_url = zip_asset['browser_download_url']
+        print(f"📡 Downloading from: {zip_url}")
         
-        db_response = requests.get(db_url, stream=True, timeout=60)
-        db_response.raise_for_status()
+        zip_response = requests.get(zip_url, stream=True, timeout=60)
+        zip_response.raise_for_status()
         
-        # Save to file
-        with open(DB_PATH, 'wb') as f:
-            for chunk in db_response.iter_content(chunk_size=8192):
+        # Save zip file
+        with open(ZIP_PATH, 'wb') as f:
+            for chunk in zip_response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
+        
+        # Unzip
+        import zipfile
+        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+            zip_ref.extractall(".")
+        
+        # Clean up zip
+        os.remove(ZIP_PATH)
         
         file_size = os.path.getsize(DB_PATH)
         print(f"✅ Database downloaded successfully ({file_size:,} bytes)")

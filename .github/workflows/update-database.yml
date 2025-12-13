@@ -36,7 +36,7 @@ jobs:
         BGG_USERNAME: ${{ secrets.BGG_USERNAME }}
         BGG_PASSWORD: ${{ secrets.BGG_PASSWORD }}
       run: |
-        python download_bgg_data.py
+        python bg_ranks_csv_download.py
     
     # Step 2: Unzip CSV
     - name: Unzip CSV file
@@ -44,25 +44,35 @@ jobs:
         unzip -o boardgames_ranks.zip
         ls -lh boardgames_ranks.csv
     
-    # Step 3: Download database from latest release
+    # Step 3: Download database from releases
     - name: Download database from releases
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Get the latest release
-        LATEST_RELEASE=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
-          "https://api.github.com/repos/${{ github.repository }}/releases/latest")
+        # Get the specific release by tag
+        RELEASE_DATA=$(curl -s -H "Authorization: token $GITHUB_TOKEN" \
+          "https://api.github.com/repos/${{ github.repository }}/releases/tags/updated_boardgame_database")
         
-        # Extract download URL for boardgames.db
-        DB_URL=$(echo "$LATEST_RELEASE" | jq -r '.assets[] | select(.name=="boardgames.db") | .browser_download_url')
+        # Extract download URL for boardgames_db.zip
+        ZIP_URL=$(echo "$RELEASE_DATA" | jq -r '.assets[] | select(.name=="boardgames_db.zip") | .browser_download_url')
         
-        if [ -z "$DB_URL" ] || [ "$DB_URL" == "null" ]; then
-          echo "Error: Database not found in releases"
+        if [ -z "$ZIP_URL" ] || [ "$ZIP_URL" == "null" ]; then
+          echo "Error: boardgames_db.zip not found in release 'updated_boardgame_database'"
           exit 1
         fi
         
-        echo "Downloading database from: $DB_URL"
-        curl -L -o boardgames.db "$DB_URL"
+        echo "Downloading database from: $ZIP_URL"
+        curl -L -o boardgames_db.zip "$ZIP_URL"
+        
+        # Unzip the database
+        unzip -o boardgames_db.zip
+        
+        # Verify extraction
+        if [ ! -f boardgames.db ]; then
+          echo "Error: boardgames.db not found after unzipping"
+          exit 1
+        fi
+        
         ls -lh boardgames.db
     
     # Step 4: Update database
@@ -72,30 +82,30 @@ jobs:
       run: |
         python enrich_bgg_db_v3.py
     
-    # Step 5: Get current date for release tag
+    # Step 5: Get current date for release notes
     - name: Get current date
       id: date
       run: |
         echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
         echo "datetime=$(date +'%Y-%m-%d %H:%M:%S UTC')" >> $GITHUB_OUTPUT
     
-    # Step 6: Create new release with updated database
-    - name: Create release and upload database
+    # Step 6: Update the release with new database
+    - name: Update release with new database
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       run: |
-        # Create a new release
-        gh release create "db-${{ steps.date.outputs.date }}" \
-          --title "Database Update ${{ steps.date.outputs.date }}" \
-          --notes "Automated database update - ${{ steps.date.outputs.datetime }}" \
-          boardgames.db
+        # Zip the updated database
+        zip boardgames_db.zip boardgames.db
         
-        # Also update the 'latest' tag to point to this release
-        gh release delete latest --yes || true
-        gh release create latest \
-          --title "Latest Database" \
-          --notes "Latest automated database update - ${{ steps.date.outputs.datetime }}" \
-          boardgames.db
+        # Upload new database to the existing release (overwrites old one)
+        echo "Uploading updated database..."
+        gh release upload updated_boardgame_database boardgames_db.zip --clobber
+        
+        # Update release notes
+        gh release edit updated_boardgame_database \
+          --notes "Latest automated database update - ${{ steps.date.outputs.datetime }}"
+        
+        echo "✅ Database updated in release 'updated_boardgame_database'"
     
     # Step 7: Upload artifacts for debugging
     - name: Upload artifacts
