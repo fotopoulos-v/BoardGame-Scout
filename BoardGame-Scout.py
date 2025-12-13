@@ -9,6 +9,7 @@ import os
 import sqlite3
 import base64
 import time
+import zipfile
 
 # --- page config ---
 st.set_page_config(
@@ -19,22 +20,100 @@ st.set_page_config(
 
 
 
-import os
-import zipfile
 
 DB_PATH = "boardgames.db"
 ZIP_PATH = "boardgames_db.zip"
+GITHUB_REPO = "fotopoulos-v/BoardGame-Scout-APP"  
 
-# Extract the DB from zip only if needed
-if not os.path.exists(DB_PATH):
-    if os.path.exists(ZIP_PATH):
-        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-            zip_ref.extractall(".")
-        print("📦 Extracted boardgames.db from boardgames_db.zip")
-    else:
-        raise FileNotFoundError(
-            f"❌ Neither {DB_PATH} nor {ZIP_PATH} were found. Cannot load the database."
-        )
+
+# ==========================================
+# DATABASE DOWNLOAD FUNCTION
+# ==========================================
+@st.cache_resource
+def download_database():
+    """Download the latest database from GitHub releases if not present or outdated."""
+    
+    # Check if database exists and is recent (less than 24 hours old)
+    if os.path.exists(DB_PATH):
+        file_age = time.time() - os.path.getmtime(DB_PATH)
+        if file_age < 86400:  # 24 hours
+            print(f"✅ Using existing database (age: {file_age/3600:.1f} hours)")
+            return DB_PATH
+        else:
+            print(f"⏰ Database is {file_age/3600:.1f} hours old, downloading update...")
+    
+    print("📥 Downloading latest database from GitHub releases...")
+    
+    try:
+        # Get latest release info
+        release_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/latest"
+        response = requests.get(release_url, timeout=30)
+        response.raise_for_status()
+        
+        release_data = response.json()
+        
+        # Find database asset
+        db_asset = None
+        for asset in release_data.get('assets', []):
+            if asset['name'] == 'boardgames.db':
+                db_asset = asset
+                break
+        
+        if not db_asset:
+            raise Exception("Database not found in latest release")
+        
+        # Download database
+        db_url = db_asset['browser_download_url']
+        
+        db_response = requests.get(db_url, stream=True, timeout=60)
+        db_response.raise_for_status()
+        
+        # Save to file
+        with open(DB_PATH, 'wb') as f:
+            for chunk in db_response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+        
+        file_size = os.path.getsize(DB_PATH)
+        print(f"✅ Database downloaded successfully ({file_size:,} bytes)")
+        return DB_PATH
+        
+    except Exception as e:
+        print(f"❌ Download error: {e}")
+        
+        # If download fails but we have an old database, use it
+        if os.path.exists(DB_PATH):
+            st.warning(f"⚠️ Using cached database (download failed: {e})")
+            return DB_PATH
+        
+        st.error(f"❌ Cannot load database: {e}")
+        return None
+
+# ==========================================
+# INITIALIZE DATABASE
+# ==========================================
+db_path = download_database()
+
+if not db_path:
+    st.error("❌ Cannot load database. Please try again later.")
+    st.stop()
+
+conn = sqlite3.connect(db_path)
+
+
+
+
+
+# # Extract the DB from zip only if needed
+# if not os.path.exists(DB_PATH):
+#     if os.path.exists(ZIP_PATH):
+#         with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+#             zip_ref.extractall(".")
+#         print("📦 Extracted boardgames.db from boardgames_db.zip")
+#     else:
+#         raise FileNotFoundError(
+#             f"❌ Neither {DB_PATH} nor {ZIP_PATH} were found. Cannot load the database."
+#         )
 
 
 
