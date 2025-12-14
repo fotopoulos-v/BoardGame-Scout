@@ -44,14 +44,15 @@ jobs:
           unzip -o boardgames_ranks.zip
           ls -lh boardgames_ranks.csv
 
-      # Step 3: Download database from releases
-      - name: Download database from releases
+      # Step 3: Download database from release
+      - name: Download database from release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          echo "Downloading boardgames_db.zip from release..."
+          RELEASE_TAG="boardgame-database"  # fixed tag
+          echo "Downloading boardgames_db.zip from release with tag $RELEASE_TAG..."
 
-          gh release download --latest \
+          gh release download "$RELEASE_TAG" \
             --pattern boardgames_db.zip \
             --clobber
 
@@ -83,15 +84,20 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          RELEASE_TAG="boardgame-database"  # same fixed tag
+
+          # Zip the updated database
           zip boardgames_db.zip boardgames.db
 
+          # Upload updated database to the existing release (overwrite)
           echo "Uploading updated database..."
-          gh release upload updated_boardgame_database boardgames_db.zip --clobber
+          gh release upload "$RELEASE_TAG" boardgames_db.zip --clobber
 
-          gh release edit updated_boardgame_database \
+          # Update release notes with timestamp
+          gh release edit "$RELEASE_TAG" \
             --notes "Latest automated database update - ${{ steps.date.outputs.datetime }}"
 
-          echo "✅ Database updated in release 'updated_boardgame_database'"
+          echo "✅ Database updated in release '$RELEASE_TAG'"
 
       # Step 7: Upload artifacts for debugging
       - name: Upload artifacts
