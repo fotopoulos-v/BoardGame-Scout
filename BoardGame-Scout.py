@@ -111,21 +111,6 @@ conn = sqlite3.connect(db_path)
 
 
 
-
-
-# # Extract the DB from zip only if needed
-# if not os.path.exists(DB_PATH):
-#     if os.path.exists(ZIP_PATH):
-#         with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
-#             zip_ref.extractall(".")
-#         print("📦 Extracted boardgames.db from boardgames_db.zip")
-#     else:
-#         raise FileNotFoundError(
-#             f"❌ Neither {DB_PATH} nor {ZIP_PATH} were found. Cannot load the database."
-#         )
-
-
-
 # -------------------------
 # CSS (unchanged except small additions for API messages)
 # -------------------------
@@ -355,17 +340,17 @@ with st.sidebar:
             unsafe_allow_html=True
         )
 
+    st.markdown("---")
+    @st.cache_data
+    def get_db_last_updated():
+        conn = sqlite3.connect(DB_PATH)
+        cur = conn.cursor()
+        cur.execute("SELECT MAX(last_updated) FROM games;")
+        result = cur.fetchone()[0]
+        conn.close()
+        return result
 
-@st.cache_data
-def get_db_last_updated():
-    conn = sqlite3.connect(DB_PATH)
-    cur = conn.cursor()
-    cur.execute("SELECT MAX(last_updated) FROM games;")
-    result = cur.fetchone()[0]
-    conn.close()
-    return result
-
-st.sidebar.info(f"🕒 Data last updated: {get_db_last_updated()}")
+    st.sidebar.info(f"🕒 Database updated: {get_db_last_updated()}")
 
 
 
