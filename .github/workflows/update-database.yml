@@ -51,7 +51,7 @@ jobs:
         run: |
           echo "Downloading boardgames_db.zip from release..."
 
-          gh release download updated_boardgame_database \
+          gh release download --latest \
             --pattern boardgames_db.zip \
             --clobber
 
