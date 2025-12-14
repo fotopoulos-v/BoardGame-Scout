@@ -377,10 +377,10 @@ with st.sidebar:
         f"""
     <div style="
         color: #E6F1FF;
-        font-size: 18px;
+        font-size: 16px;
     ">
-    <h4 style="margin-bottom: 0.1rem;">🗄️ Database info</h4>
-    <ul style="padding-left: 0.5rem;">
+    <h4 style="margin-bottom: 0.0rem;">🗄️ Database info</h4>
+    <ul style="padding-left: 0.0rem;">
     <li><b>Updated:</b> {last_updated_str}</li>
     <li><b>Total board games &amp; expansions:</b> {total_games:,}</li>
     </ul>
