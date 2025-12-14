@@ -32,11 +32,7 @@ GITHUB_REPO = "fotopoulos-v/BoardGame-Scout-APP"
 @st.cache_resource
 def download_database():
     """Download the latest database from GitHub releases if not present or outdated."""
-    
-    DB_PATH = "boardgames.db"
-    ZIP_PATH = "boardgames_db.zip"
-    GITHUB_REPO = "YOUR-USERNAME/BoardGame-Scout-APP"  # UPDATE THIS!
-    RELEASE_TAG = "updated_boardgame_database"
+    RELEASE_TAG = "boardgame-database"
     
     # Check if database exists and is recent (less than 24 hours old)
     if os.path.exists(DB_PATH):
@@ -111,6 +107,7 @@ if not db_path:
     st.stop()
 
 conn = sqlite3.connect(db_path)
+
 
 
 
@@ -359,6 +356,16 @@ with st.sidebar:
         )
 
 
+@st.cache_data
+def get_db_last_updated():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT MAX(last_updated) FROM games;")
+    result = cur.fetchone()[0]
+    conn.close()
+    return result
+
+st.sidebar.info(f"🕒 Data last updated: {get_db_last_updated()}")
 
 
 
