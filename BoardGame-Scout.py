@@ -23,7 +23,7 @@ st.set_page_config(
 
 DB_PATH = "boardgames.db"
 ZIP_PATH = "boardgames_db.zip"
-GITHUB_REPO = "fotopoulos-v/BoardGame-Scout-APP"  
+GITHUB_REPO = "fotopoulos-v/BoardGame-Scout"  
 
 
 # ==========================================
