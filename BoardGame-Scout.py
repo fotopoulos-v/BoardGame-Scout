@@ -10,6 +10,9 @@ import sqlite3
 import base64
 import time
 import zipfile
+from datetime import datetime
+from zoneinfo import ZoneInfo  # Python 3.9+
+
 
 # --- page config ---
 st.set_page_config(
@@ -342,15 +345,28 @@ with st.sidebar:
 
     st.markdown("---")
     @st.cache_data
-    def get_db_last_updated():
+    def get_db_last_updated_formatted():
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
         cur.execute("SELECT MAX(last_updated) FROM games;")
         result = cur.fetchone()[0]
         conn.close()
-        return result
 
-    st.sidebar.info(f"🕒 Database updated: {get_db_last_updated()}")
+        if not result:
+            return "Unknown"
+
+        # Parse UTC timestamp from DB
+        utc_dt = datetime.fromisoformat(result.replace("Z", "+00:00"))
+
+        # Convert to Greece local time
+        greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
+
+        # Format nicely
+        formatted = greece_dt.strftime("%d/%m/%Y - %H:%M")
+
+        return f"{formatted} (Greece local time, UTC+2)"
+
+    st.sidebar.info(f"🕒 **Database updated:**\n\n{get_db_last_updated_formatted()}")
 
 
 
