@@ -345,28 +345,41 @@ with st.sidebar:
 
     st.markdown("---")
     @st.cache_data
-    def get_db_last_updated_formatted():
+    def get_database_info():
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
+
+        # Last update timestamp
         cur.execute("SELECT MAX(last_updated) FROM games;")
-        result = cur.fetchone()[0]
+        last_updated_raw = cur.fetchone()[0]
+
+        # Total games + expansions
+        cur.execute("SELECT COUNT(*) FROM games;")
+        total_games = cur.fetchone()[0]
+
         conn.close()
 
-        if not result:
-            return "Unknown"
+        if last_updated_raw:
+            # Parse UTC timestamp
+            utc_dt = datetime.fromisoformat(last_updated_raw.replace("Z", "+00:00"))
+            greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
+            last_updated = greece_dt.strftime("%d/%m/%Y - %H:%M")
+            last_updated_str = f"{last_updated} (Greece local time, UTC+2)"
+        else:
+            last_updated_str = "Unknown"
 
-        # Parse UTC timestamp from DB
-        utc_dt = datetime.fromisoformat(result.replace("Z", "+00:00"))
+        return last_updated_str, total_games
 
-        # Convert to Greece local time
-        greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
 
-        # Format nicely
-        formatted = greece_dt.strftime("%d/%m/%Y - %H:%M")
+    last_updated_str, total_games = get_database_info()
 
-        return f"{formatted} (Greece local time, UTC+2)"
-
-    st.sidebar.info(f"🕒 **Database updated:**\n\n{get_db_last_updated_formatted()}")
+    st.sidebar.markdown(
+        f"""
+    ### 🗄️ Database info
+    - **Updated:** {last_updated_str}
+    - **Total board games & expansions:** {total_games:,}
+    """
+    )
 
 
 
