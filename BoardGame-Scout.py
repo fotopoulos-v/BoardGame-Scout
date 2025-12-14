@@ -266,7 +266,7 @@ st.markdown("""
 # Sidebar: Buy Me a Coffee
 # ---------------------------
 with st.sidebar:
-    st.markdown("---")
+    # st.markdown("---")
     st.markdown(
         """
         <p style="color:#FCF2D9; font-size:16px;">
@@ -344,51 +344,73 @@ with st.sidebar:
         )
 
     st.markdown("---")
+    # @st.cache_data
+    # def get_database_info():
+    #     conn = sqlite3.connect(DB_PATH)
+    #     cur = conn.cursor()
+
+    #     # Last update timestamp
+    #     cur.execute("SELECT MAX(last_updated) FROM games;")
+    #     last_updated_raw = cur.fetchone()[0]
+
+    #     # Total games + expansions
+    #     cur.execute("SELECT COUNT(*) FROM games;")
+    #     total_games = cur.fetchone()[0]
+
+    #     conn.close()
+
+    #     if last_updated_raw:
+    #         # Parse UTC timestamp
+    #         utc_dt = datetime.fromisoformat(last_updated_raw.replace("Z", "+00:00"))
+    #         greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
+    #         last_updated = greece_dt.strftime("%d/%m/%Y - %H:%M")
+    #         last_updated_str = f"{last_updated} (Greece local time, UTC+2)"
+    #     else:
+    #         last_updated_str = "Unknown"
+
+    #     return last_updated_str, total_games
+
+
+    # last_updated_str, total_games = get_database_info()
+
+    # st.sidebar.markdown(
+    #     f"""
+    # <div style="
+    #     color: #E6F1FF;
+    #     font-size: 16px;
+    # ">
+    # <h2 style="margin-bottom: 0.0rem;">🗄️ Database info</h2>
+    # <ul style="padding-left: 0.0rem;">
+    # <li><b>Updated:</b> {last_updated_str}</li>
+    # <li><b>Total board games &amp; expansions:</b> {total_games:,}</li>
+    # </ul>
+    # </div>
+    # """,
+    #     unsafe_allow_html=True
+    # )
     @st.cache_data
-    def get_database_info():
+    def get_db_last_updated_formatted():
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
-
-        # Last update timestamp
         cur.execute("SELECT MAX(last_updated) FROM games;")
-        last_updated_raw = cur.fetchone()[0]
-
-        # Total games + expansions
-        cur.execute("SELECT COUNT(*) FROM games;")
-        total_games = cur.fetchone()[0]
-
+        result = cur.fetchone()[0]
         conn.close()
 
-        if last_updated_raw:
-            # Parse UTC timestamp
-            utc_dt = datetime.fromisoformat(last_updated_raw.replace("Z", "+00:00"))
-            greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
-            last_updated = greece_dt.strftime("%d/%m/%Y - %H:%M")
-            last_updated_str = f"{last_updated} (Greece local time, UTC+2)"
-        else:
-            last_updated_str = "Unknown"
+        if not result:
+            return "Unknown"
 
-        return last_updated_str, total_games
+        # Parse UTC timestamp from DB
+        utc_dt = datetime.fromisoformat(result.replace("Z", "+00:00"))
 
+        # Convert to Greece local time
+        greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
 
-    last_updated_str, total_games = get_database_info()
+        # Format nicely
+        formatted = greece_dt.strftime("%d/%m/%Y - %H:%M")
 
-    st.sidebar.markdown(
-        f"""
-    <div style="
-        color: #E6F1FF;
-        font-size: 16px;
-    ">
-    <h2 style="margin-bottom: 0.0rem;">🗄️ Database info</h2>
-    <ul style="padding-left: 0.0rem;">
-    <li><b>Updated:</b> {last_updated_str}</li>
-    <li><b>Total board games &amp; expansions:</b> {total_games:,}</li>
-    </ul>
-    </div>
-    """,
-        unsafe_allow_html=True
-    )
+        return f"{formatted} (Greece local time, UTC+2)"
 
+    st.sidebar.info(f"🕒 **Database updated:**\n\n{get_db_last_updated_formatted()}")
 
 
 # ---------------------------
