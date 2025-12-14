@@ -379,7 +379,7 @@ with st.sidebar:
         color: #E6F1FF;
         font-size: 16px;
     ">
-    <h4 style="margin-bottom: 0.0rem;">🗄️ Database info</h4>
+    <h3 style="margin-bottom: 0.0rem;">🗄️ Database info</h3>
     <ul style="padding-left: 0.0rem;">
     <li><b>Updated:</b> {last_updated_str}</li>
     <li><b>Total board games &amp; expansions:</b> {total_games:,}</li>
