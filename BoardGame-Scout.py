@@ -375,10 +375,18 @@ with st.sidebar:
 
     st.sidebar.markdown(
         f"""
-    ### 🗄️ Database info
-    - **Updated:** {last_updated_str}
-    - **Total board games & expansions:** {total_games:,}
-    """
+    <div style="
+        color: #E6F1FF;
+        font-size: 14px;
+    ">
+    <h4 style="margin-bottom: 0.5rem;">🗄️ Database info</h4>
+    <ul style="padding-left: 1.2rem;">
+    <li><b>Updated:</b> {last_updated_str}</li>
+    <li><b>Total board games &amp; expansions:</b> {total_games:,}</li>
+    </ul>
+    </div>
+    """,
+        unsafe_allow_html=True
     )
 
 
