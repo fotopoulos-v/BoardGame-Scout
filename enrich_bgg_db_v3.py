@@ -2,9 +2,9 @@ import sqlite3
 import requests
 import time
 import xml.etree.ElementTree as ET
-from datetime import datetime
 import pandas as pd
 import os
+from datetime import datetime, UTC
 
 # -----------------------
 # CONFIG
@@ -203,7 +203,7 @@ def main(token=None):
             print(f"Skipping new-game batch {batch_ids[:3]} due to error: {e}")
             continue
 
-        now = datetime.utcnow().isoformat(timespec='seconds') + "Z"
+        now = datetime.now(UTC).isoformat(timespec='seconds')
         for game in batch_results:
             game_id = game["id"]
             row = new_game_rows[game_id]
@@ -246,7 +246,7 @@ def main(token=None):
             print(f"Skipping update batch {batch_ids[:3]} due to error: {e}")
             continue
 
-        now = datetime.utcnow().isoformat(timespec='seconds') + "Z"
+        now = datetime.now(UTC).isoformat(timespec='seconds')
         for game in batch_results:
             game_id = game["id"]
             row = to_update_rows[game_id]
