@@ -415,19 +415,36 @@ with st.sidebar:
 
     updated_str, total_games = get_db_info()
 
+    # st.sidebar.markdown(
+    #     f"""
+    #     <div class="db-info-box">
+    #         <strong>🗄️ Database info</strong>
+    #         <ul>
+    #             <li><strong>Updated:</strong> {updated_str} (Greece local time, UTC+2)</li>
+    #             <li><strong>Total board games & expansions:</strong> {total_games:,}</li>
+    #         </ul>
+    #     </div>
+    #     """,
+    #     unsafe_allow_html=True
+    # )
     st.sidebar.markdown(
         f"""
         <div class="db-info-box">
-            <strong>🗄️ Database info</strong>
+            <span class="db-info-title">🧩 Database info</span>
             <ul>
-                <li><strong>Updated:</strong> {updated_str} (Greece local time, UTC+2)</li>
-                <li><strong>Total board games & expansions:</strong> {total_games:,}</li>
+                <li>
+                    <span class="db-highlight">Updated:</span>
+                    {updated_str} (Greece local time, UTC+2)
+                </li>
+                <li>
+                    <span class="db-highlight">Total board games & expansions:</span>
+                    {total_games:,}
+                </li>
             </ul>
         </div>
         """,
         unsafe_allow_html=True
     )
-
 
 
 
