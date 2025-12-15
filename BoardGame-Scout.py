@@ -288,7 +288,7 @@ st.markdown("""
 
     .db-highlight {
         font-size: 0.9rem;
-        font-weight: 700;
+        font-weight: 600;
     }
                   
     </style>
@@ -308,9 +308,39 @@ with st.sidebar:
         """, unsafe_allow_html=True
     )
 
+    # st.markdown(
+    #     """
+    #     <style>
+    #     .bmc-button {
+    #         background-color:#3679AD;
+    #         color:white;
+    #         border:none;
+    #         border-radius:8px;
+    #         padding:10px 20px;
+    #         font-size:16px;
+    #         font-weight:bold;
+    #         cursor:pointer;
+    #         margin-top:5px;
+    #         margin-bottom:18px;
+    #         transition: all 0.3s ease;
+    #     }
+    #     .bmc-button:hover { background-color:#003AAB; transform: scale(1.05); }
+    #     </style>
+    #     <a href="https://buymeacoffee.com/vasileios" target="_blank">
+    #         <button class="bmc-button">☕ Buy Me a Coffee</button>
+    #     </a>
+    #     """, unsafe_allow_html=True
+    # )
     st.markdown(
         """
         <style>
+        .bmc-container {
+            display: flex;
+            justify-content: center;
+            margin-top: 8px;
+            margin-bottom: 18px;
+        }
+
         .bmc-button {
             background-color:#3679AD;
             color:white;
@@ -320,17 +350,26 @@ with st.sidebar:
             font-size:16px;
             font-weight:bold;
             cursor:pointer;
-            margin-top:5px;
-            margin-bottom:18px;
             transition: all 0.3s ease;
         }
-        .bmc-button:hover { background-color:#003AAB; transform: scale(1.05); }
+
+        .bmc-button:hover {
+            background-color:#003AAB;
+            transform: scale(1.05);
+        }
         </style>
-        <a href="https://buymeacoffee.com/vasileios" target="_blank">
-            <button class="bmc-button">☕ Buy Me a Coffee</button>
-        </a>
-        """, unsafe_allow_html=True
+
+        <div class="bmc-container">
+            <a href="https://buymeacoffee.com/vasileios" target="_blank">
+                <button class="bmc-button">☕ Buy Me a Coffee</button>
+            </a>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
+
+
 
     # -------------------------
     # Sidebar: Powered by BGG (required attribution)
