@@ -258,6 +258,24 @@ st.markdown("""
     margin-top: 0.4rem !important;
 }
 
+
+
+    .db-info-box {
+        background-color: rgba(138, 99, 255, 0.15);
+        padding: 12px 14px;
+        border-radius: 8px;
+        color: white;
+        font-size: 0.85rem;
+        line-height: 1.4;
+    }
+    .db-info-box ul {
+        margin: 6px 0 0 18px;
+        padding: 0;
+    }
+    .db-info-box li {
+        margin-bottom: 4px;
+    }
+
                   
     </style>
 """, unsafe_allow_html=True)
@@ -388,6 +406,11 @@ with st.sidebar:
     # """,
     #     unsafe_allow_html=True
     # )
+
+
+
+
+    # ## 2) way
     @st.cache_data
     def get_db_info():
         conn = sqlite3.connect(DB_PATH)
@@ -413,16 +436,36 @@ with st.sidebar:
 
     updated_str, total_games = get_db_info()
 
-    st.sidebar.info(
+    # st.sidebar.info(
+    #     f"""
+    # 🗄️ **Database info**
+
+    # **Updated:** {updated_str}  
+    # *(Greece local time, UTC+2)*
+
+    # **Total board games & expansions:** {total_games:,}
+    # """
+    # )
+
+
+## 3) way
+    # updated_str, total_games = get_db_info()
+
+    st.sidebar.markdown(
         f"""
-    🗄️ **Database info**
-
-    **Updated:** {updated_str}  
-    *(Greece local time, UTC+2)*
-
-    **Total board games & expansions:** {total_games:,}
-    """
+        <div class="db-info-box">
+            <strong>🗄️ Database info</strong>
+            <ul>
+                <li><strong>Updated:</strong> {updated_str} (Greece local time, UTC+2)</li>
+                <li><strong>Total board games & expansions:</strong> {total_games:,}</li>
+            </ul>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
+
+
+
 
 
 # ---------------------------
