@@ -285,8 +285,8 @@ st.markdown("""
     }
 
     .db-info-title {
-        font-size: 0.95rem;
-        font-weight: 600;
+        font-size: 1.15rem;
+        font-weight: 700;
         margin-bottom: 6px;
         display: block;
     }
