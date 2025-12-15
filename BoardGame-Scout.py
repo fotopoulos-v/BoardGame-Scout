@@ -273,7 +273,7 @@ st.markdown("""
         font-size: 1.15rem;
         font-weight: 700;
         letter-spacing: 0.3px;
-        margin-bottom: 6px;
+        margin-bottom: 10px;
         display: block;
     }
 
