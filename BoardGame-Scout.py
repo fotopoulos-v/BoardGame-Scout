@@ -278,7 +278,7 @@ st.markdown("""
     }
 
     .db-info-box ul {
-        margin: 4px 0 0 12px;   /* ⬅ bullets closer to left */
+        margin: 1px 0 0 12px;   /* ⬅ bullets closer to left */
         padding: 0;
     }
 
