@@ -519,6 +519,9 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
+st.sidebar.caption(
+    f"DB file modified: {datetime.fromtimestamp(os.path.getmtime(DB_PATH))}"
+)
 
 
 
