@@ -1647,12 +1647,6 @@ if st.session_state.get("show_search_results"):
                         "Designers", "Artists", "Publishers", "Mechanics"]
         # --------------------------------------------
         # Continuous row numbering across pages
-        # global_start_number = page * PAGE_SIZE
-        # df_display = df_page.reindex(columns=display_cols).copy()
-        # df_display.index = df_display.index + global_start_number + 1
-        # df_display.index.name = "No."
-        # --------------------------------------------
-        # Continuous row numbering across pages
         global_start_number = page * PAGE_SIZE
         df_display = df_page.reindex(columns=display_cols).copy()
 
