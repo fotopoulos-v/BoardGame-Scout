@@ -32,73 +32,157 @@ GITHUB_REPO = "fotopoulos-v/BoardGame-Scout"
 # ==========================================
 # DATABASE DOWNLOAD FUNCTION
 # ==========================================
+# @st.cache_resource
+# def download_database():
+#     """Download the latest database from GitHub releases if not present or outdated."""
+#     RELEASE_TAG = "boardgame-database"
+    
+#     # Check if database exists and is recent (less than 24 hours old)
+#     if os.path.exists(DB_PATH):
+#         file_age = time.time() - os.path.getmtime(DB_PATH)
+#         if file_age < 86400:  # 24 hours
+#             print(f"✅ Using existing database (age: {file_age/3600:.1f} hours)")
+#             return DB_PATH
+    
+#     print("📥 Downloading latest database from GitHub releases...")
+    
+#     try:
+#         # Get specific release info
+#         release_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{RELEASE_TAG}"
+#         response = requests.get(release_url, timeout=30)
+#         response.raise_for_status()
+        
+#         release_data = response.json()
+        
+#         # Find database zip asset
+#         zip_asset = None
+#         for asset in release_data.get('assets', []):
+#             if asset['name'] == 'boardgames_db.zip':
+#                 zip_asset = asset
+#                 break
+        
+#         if not zip_asset:
+#             raise Exception("boardgames_db.zip not found in release")
+        
+#         # Download zip
+#         zip_url = zip_asset['browser_download_url']
+#         print(f"📡 Downloading from: {zip_url}")
+        
+#         zip_response = requests.get(zip_url, stream=True, timeout=60)
+#         zip_response.raise_for_status()
+        
+#         # Save zip file
+#         with open(ZIP_PATH, 'wb') as f:
+#             for chunk in zip_response.iter_content(chunk_size=8192):
+#                 if chunk:
+#                     f.write(chunk)
+        
+#         # Unzip
+#         import zipfile
+#         with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+#             zip_ref.extractall(".")
+        
+#         # Clean up zip
+#         os.remove(ZIP_PATH)
+        
+#         file_size = os.path.getsize(DB_PATH)
+#         print(f"✅ Database downloaded successfully ({file_size:,} bytes)")
+#         return DB_PATH
+        
+#     except Exception as e:
+#         print(f"❌ Download error: {e}")
+        
+#         # If download fails but we have an old database, use it
+#         if os.path.exists(DB_PATH):
+#             st.warning(f"⚠️ Using cached database (download failed: {e})")
+#             return DB_PATH
+        
+#         st.error(f"❌ Cannot load database: {e}")
+#         return None
+
+
+
 @st.cache_resource
 def download_database():
-    """Download the latest database from GitHub releases if not present or outdated."""
+    """Download the latest database from GitHub releases if newer than local copy."""
+    
     RELEASE_TAG = "boardgame-database"
-    
-    # Check if database exists and is recent (less than 24 hours old)
-    if os.path.exists(DB_PATH):
-        file_age = time.time() - os.path.getmtime(DB_PATH)
-        if file_age < 86400:  # 24 hours
-            print(f"✅ Using existing database (age: {file_age/3600:.1f} hours)")
-            return DB_PATH
-    
-    print("📥 Downloading latest database from GitHub releases...")
-    
+
+    print("🔎 Checking GitHub release for database updates...")
+
     try:
-        # Get specific release info
+        # --- 1. Fetch release metadata ---
         release_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{RELEASE_TAG}"
         response = requests.get(release_url, timeout=30)
         response.raise_for_status()
-        
         release_data = response.json()
-        
-        # Find database zip asset
+
+        # Parse GitHub release updated time (UTC)
+        release_updated_at = release_data["updated_at"]
+        release_ts = datetime.fromisoformat(
+            release_updated_at.replace("Z", "+00:00")
+        ).timestamp()
+
+        # --- 2. Check local DB timestamp ---
+        if os.path.exists(DB_PATH):
+            local_ts = os.path.getmtime(DB_PATH)
+
+            if local_ts >= release_ts:
+                print("✅ Local database is already up to date with GitHub release")
+                return DB_PATH
+            else:
+                print("⬇️ Newer database found on GitHub — downloading update")
+        else:
+            print("⬇️ No local database found — downloading")
+
+        # --- 3. Find database zip asset ---
         zip_asset = None
-        for asset in release_data.get('assets', []):
-            if asset['name'] == 'boardgames_db.zip':
+        for asset in release_data.get("assets", []):
+            if asset["name"] == "boardgames_db.zip":
                 zip_asset = asset
                 break
-        
+
         if not zip_asset:
-            raise Exception("boardgames_db.zip not found in release")
-        
-        # Download zip
-        zip_url = zip_asset['browser_download_url']
+            raise Exception("boardgames_db.zip not found in release assets")
+
+        zip_url = zip_asset["browser_download_url"]
         print(f"📡 Downloading from: {zip_url}")
-        
+
+        # --- 4. Download zip ---
         zip_response = requests.get(zip_url, stream=True, timeout=60)
         zip_response.raise_for_status()
-        
-        # Save zip file
-        with open(ZIP_PATH, 'wb') as f:
+
+        with open(ZIP_PATH, "wb") as f:
             for chunk in zip_response.iter_content(chunk_size=8192):
                 if chunk:
                     f.write(chunk)
-        
-        # Unzip
-        import zipfile
-        with zipfile.ZipFile(ZIP_PATH, 'r') as zip_ref:
+
+        # --- 5. Extract ---
+        with zipfile.ZipFile(ZIP_PATH, "r") as zip_ref:
             zip_ref.extractall(".")
-        
-        # Clean up zip
+
         os.remove(ZIP_PATH)
-        
+
         file_size = os.path.getsize(DB_PATH)
-        print(f"✅ Database downloaded successfully ({file_size:,} bytes)")
+        print(f"✅ Database updated successfully ({file_size:,} bytes)")
         return DB_PATH
-        
+
     except Exception as e:
         print(f"❌ Download error: {e}")
-        
-        # If download fails but we have an old database, use it
+
+        # Fallback: use existing DB if available
         if os.path.exists(DB_PATH):
-            st.warning(f"⚠️ Using cached database (download failed: {e})")
+            st.warning(f"⚠️ Using existing database (update failed: {e})")
             return DB_PATH
-        
+
         st.error(f"❌ Cannot load database: {e}")
         return None
+
+
+
+
+
+
 
 # ==========================================
 # INITIALIZE DATABASE
