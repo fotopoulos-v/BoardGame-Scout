@@ -474,9 +474,34 @@ with st.sidebar:
             unsafe_allow_html=True
         )
 
+
+    # -------------------------
+    # Sidebar: Database info
+    # -------------------------
     st.markdown("---")
     @st.cache_data
-    def get_db_info():
+    # def get_db_info():
+    #     conn = sqlite3.connect(DB_PATH)
+    #     cur = conn.cursor()
+
+    #     cur.execute("SELECT MAX(last_updated) FROM games;")
+    #     last_updated = cur.fetchone()[0]
+
+    #     cur.execute("SELECT COUNT(*) FROM games;")
+    #     total_games = cur.fetchone()[0]
+
+    #     conn.close()
+
+    #     if not last_updated:
+    #         updated_str = "Unknown"
+    #     else:
+    #         utc_dt = datetime.fromisoformat(last_updated.replace("Z", "+00:00"))
+    #         greece_dt = utc_dt.astimezone(ZoneInfo("Europe/Athens"))
+    #         updated_str = greece_dt.strftime("%d/%m/%Y - %H:%M")
+
+    #     return updated_str, total_games
+    @st.cache_data
+    def get_db_info(db_mtime: float):
         conn = sqlite3.connect(DB_PATH)
         cur = conn.cursor()
 
@@ -498,7 +523,9 @@ with st.sidebar:
         return updated_str, total_games
 
 
-    updated_str, total_games = get_db_info()
+    db_mtime = os.path.getmtime(DB_PATH)
+    updated_str, total_games = get_db_info(db_mtime)
+
 
     st.sidebar.markdown(
         f"""
@@ -519,9 +546,7 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-st.sidebar.caption(
-    f"DB file modified: {datetime.fromtimestamp(os.path.getmtime(DB_PATH))}"
-)
+
 
 
 
