@@ -1728,15 +1728,21 @@ elif st.session_state.get("show_hot_games"):
         st.subheader("🔥 Hot Board Games")
         st.caption("💡 Board games trending right now! (Data powered by BGG XML API)")
         # st.dataframe(df_hot, use_container_width=True)
-        st.dataframe(
-            df_hot,
-            column_config={
-                "Geek Rating": st.column_config.NumberColumn(format="%.2f", help="BGG Geek Rating"),
-                "Complexity": st.column_config.NumberColumn(format="%.1f"),
-                "Average Rating": st.column_config.NumberColumn(format="%.2f"),
-                "Number of Voters": st.column_config.NumberColumn(format="%d"),
-            },
-            use_container_width=True
+        # st.dataframe(
+        #     df_hot,
+        #     column_config={
+        #         "Geek Rating": st.column_config.NumberColumn(format="%.2f", help="BGG Geek Rating"),
+        #         "Complexity": st.column_config.NumberColumn(format="%.1f"),
+        #         "Average Rating": st.column_config.NumberColumn(format="%.2f"),
+        #         "Number of Voters": st.column_config.NumberColumn(format="%d"),
+        #     },
+        #     use_container_width=True
+        # )
+        st.table(
+            df_hot.style.set_properties(
+                subset=["Geek Rating", "Complexity", "Average Rating", "Number of Voters"],
+                **{"text-align": "center"}
+            )
         )
 
     else:
