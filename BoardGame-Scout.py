@@ -1301,44 +1301,26 @@ if st.session_state.get("show_user_section", False):
         df_page.index.name = "No."
         st.dataframe(df_page, use_container_width=True)
 
-        # # Prev / Next buttons  (INSIDE the collection branch)
-        # col_spacer_left, col_pagination, col_spacer_right = st.columns([2, 1.5, 2])
-        # with col_pagination:
-        #     cprev_bgg, cnext_bgg = st.columns([1, 1])
-        #     with cprev_bgg:
-        #         if bgg_page > 0:
-        #             if st.button("◀ Prev", key="prev_bgg_btn", type="secondary"):
-        #                 st.session_state["bgg_page"] = bgg_page - 1
-        #                 st.rerun()
-        #     with cnext_bgg:
-        #         if (bgg_page + 1) * PAGE_SIZE < total_rows:
-        #             if st.button("Next ▶", key="next_bgg_btn", type="secondary"):
-        #                 st.session_state["bgg_page"] = bgg_page + 1
-        #                 st.rerun()
-        # --- Pagination controls (BGG Version) ---
+        # Prev / Next buttons  (INSIDE the collection branch)
         col_spacer_left, col_pagination, col_spacer_right = st.columns([2, 1.5, 2])
-        
         with col_pagination:
-            cprev, cnext = st.columns([1, 1])
+            cprev_bgg, cnext_bgg = st.columns([1, 1])
+            with cprev_bgg:
+                if bgg_page > 0:
+                    if st.button("◀ Prev", key="prev_bgg_btn", type="secondary"):
+                        st.session_state["bgg_page"] = bgg_page - 1
+                        st.rerun()
+            with cnext_bgg:
+                if (bgg_page + 1) * PAGE_SIZE < total_rows:
+                    if st.button("Next ▶", key="next_bgg_btn", type="secondary"):
+                        st.session_state["bgg_page"] = bgg_page + 1
+                        st.rerun()
 
-        with cprev:
-            if page > 0:
-                if st.button("◀ Prev", key="prev_page_final", type="secondary"):
-                    st.session_state["db_page"] = page - 1
-                    st.rerun()
-
-        with cnext:
-            if (page + 1) * PAGE_SIZE < total:
-                if st.button("Next ▶", key="next_page_final", type="secondary"):
-                    st.session_state["db_page"] = page + 1
-                    st.rerun()
-
-        # Pagination button styling - must override secondary button defaults
         st.markdown("""
             <style>
-            /* Ultra-specific selectors to override secondary button styles */
-            div.stElementContainer.st-key-prev_page_final div.stButton > button,
-            div.stElementContainer.st-key-prev_page_final button[kind="secondary"] {
+            /* BGG Prev button */
+            div.stElementContainer.st-key-prev_bgg_btn div.stButton > button,
+            div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"] {
                 background-color: #212B45 !important;   
                 color: white !important;
                 border: 1px solid #333 !important;
@@ -1346,14 +1328,15 @@ if st.session_state.get("show_user_section", False):
                 height: 38px !important;
                 font-size: 16px !important;
             }
-            div.stElementContainer.st-key-prev_page_final div.stButton > button:hover,
-            div.stElementContainer.st-key-prev_page_final button[kind="secondary"]:hover {
+            div.stElementContainer.st-key-prev_bgg_btn div.stButton > button:hover,
+            div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"]:hover {
                 background-color: #041D5C !important;
                 transform: scale(1.05);
             }
-
-            div.stElementContainer.st-key-next_page_final div.stButton > button,
-            div.stElementContainer.st-key-next_page_final button[kind="secondary"] {
+            
+            /* BGG Next button */
+            div.stElementContainer.st-key-next_bgg_btn div.stButton > button,
+            div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"] {
                 background-color: #212B45 !important;   
                 color: white !important;
                 border: 1px solid #333 !important;
@@ -1361,16 +1344,13 @@ if st.session_state.get("show_user_section", False):
                 height: 38px !important;
                 font-size: 16px !important;
             }
-            div.stElementContainer.st-key-next_page_final div.stButton > button:hover,
-            div.stElementContainer.st-key-next_page_final button[kind="secondary"]:hover {
+            div.stElementContainer.st-key-next_bgg_btn div.stButton > button:hover,
+            div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"]:hover {
                 background-color: #041D5C !important;
                 transform: scale(1.05);
             }
             </style>
         """, unsafe_allow_html=True)
-
-
-
 
 
 
