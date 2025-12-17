@@ -32,7 +32,7 @@ GITHUB_REPO = "fotopoulos-v/BoardGame-Scout"
 # ==========================================
 # DATABASE DOWNLOAD FUNCTION
 # ==========================================
-@st.cache_resource
+# @st.cache_resource
 def download_database():
     """Download the latest database from GitHub releases if newer than local copy."""
     
