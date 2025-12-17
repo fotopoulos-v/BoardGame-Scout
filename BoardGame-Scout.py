@@ -1317,54 +1317,64 @@ if st.session_state.get("show_user_section", False):
         #                 st.rerun()
         # --- Pagination controls (BGG Version) ---
         col_spacer_left, col_pagination, col_spacer_right = st.columns([2, 1.5, 2])
-
+        
         with col_pagination:
-            cprev_bgg, cnext_bgg = st.columns([1, 1])
-            
-            with cprev_bgg:
-                if bgg_page > 0:
-                    # Note the key matches the CSS below
-                    if st.button("◀ Prev", key="prev_bgg_btn", type="secondary"):
-                        st.session_state["bgg_page"] = bgg_page - 1
-                        st.rerun()
+            cprev, cnext = st.columns([1, 1])
 
-            with cnext_bgg:
-                if (bgg_page + 1) * PAGE_SIZE < total_rows:
-                    # Note the key matches the CSS below
-                    if st.button("Next ▶", key="next_bgg_btn", type="secondary"):
-                        st.session_state["bgg_page"] = bgg_page + 1
-                        st.rerun()
+        with cprev:
+            if page > 0:
+                if st.button("◀ Prev", key="prev_page_final", type="secondary"):
+                    st.session_state["db_page"] = page - 1
+                    st.rerun()
 
-        # --- Custom Styling for BGG Pagination ---
+        with cnext:
+            if (page + 1) * PAGE_SIZE < total:
+                if st.button("Next ▶", key="next_page_final", type="secondary"):
+                    st.session_state["db_page"] = page + 1
+                    st.rerun()
+
+        # Pagination button styling - must override secondary button defaults
         st.markdown("""
             <style>
-            /* Targeting the specific BGG buttons by key */
-            div.stElementContainer.st-key-prev_bgg_btn button,
-            div.stElementContainer.st-key-next_bgg_btn button {
+            /* Ultra-specific selectors to override secondary button styles */
+            div.stElementContainer.st-key-prev_page_final div.stButton > button,
+            div.stElementContainer.st-key-prev_page_final button[kind="secondary"] {
                 background-color: #212B45 !important;   
                 color: white !important;
                 border: 1px solid #333 !important;
-                width: 100% !important; /* Makes them fill the 1.5 column space nicely */
+                width: 120px !important;
                 height: 38px !important;
                 font-size: 16px !important;
-                transition: all 0.3s ease;
             }
-
-            /* Hover effects */
-            div.stElementContainer.st-key-prev_bgg_btn button:hover,
-            div.stElementContainer.st-key-next_bgg_btn button:hover {
+            div.stElementContainer.st-key-prev_page_final div.stButton > button:hover,
+            div.stElementContainer.st-key-prev_page_final button[kind="secondary"]:hover {
                 background-color: #041D5C !important;
                 transform: scale(1.05);
-                border-color: #4A90E2 !important;
             }
 
-            /* Keep the text white even on focus/active */
-            div.stElementContainer.st-key-prev_bgg_btn button:active,
-            div.stElementContainer.st-key-next_bgg_btn button:active {
+            div.stElementContainer.st-key-next_page_final div.stButton > button,
+            div.stElementContainer.st-key-next_page_final button[kind="secondary"] {
+                background-color: #212B45 !important;   
                 color: white !important;
+                border: 1px solid #333 !important;
+                width: 120px !important;
+                height: 38px !important;
+                font-size: 16px !important;
+            }
+            div.stElementContainer.st-key-next_page_final div.stButton > button:hover,
+            div.stElementContainer.st-key-next_page_final button[kind="secondary"]:hover {
+                background-color: #041D5C !important;
+                transform: scale(1.05);
             }
             </style>
         """, unsafe_allow_html=True)
+
+
+
+
+
+
+
 
     # elif sub_view == "recommendations" and "rec_df" in st.session_state:
     #     # =====  RECOMMENDATIONS  =====
