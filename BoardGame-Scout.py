@@ -1728,5 +1728,13 @@ elif st.session_state.get("show_hot_games"):
         st.subheader("🔥 Hot Board Games")
         st.caption("💡 Board games trending right now! (Data powered by BGG XML API)")
         st.dataframe(df_hot, use_container_width=True)
+        st.dataframe(
+            df_hot.style.set_properties(
+                subset=["Geek Rating", "Complexity", "Average Rating", "Number of Voters"],
+                **{"text-align": "center"}
+            ),
+            use_container_width=True
+        )
+
     else:
         st.warning("No hot games found right now.")
