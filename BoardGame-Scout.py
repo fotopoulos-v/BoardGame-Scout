@@ -1727,7 +1727,7 @@ elif st.session_state.get("show_hot_games"):
         df_hot.index.name = "No."
         st.subheader("🔥 Hot Board Games")
         st.caption("💡 Board games trending right now! (Data powered by BGG XML API)")
-        st.dataframe(df_hot, use_container_width=True)
+        # st.dataframe(df_hot, use_container_width=True)
         st.dataframe(
             df_hot.style.set_properties(
                 subset=["Geek Rating", "Complexity", "Average Rating", "Number of Voters"],
