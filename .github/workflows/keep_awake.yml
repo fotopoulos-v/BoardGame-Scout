@@ -2,9 +2,9 @@ name: Keep All Apps Awake
 
 on:
   schedule:
-    # Runs at midnight every 2 days
+    # Runs at 01:12 UTC (03:12 AM Greece Winter time) every 2 days
     - cron: '12 1 */2 * *'
-  workflow_dispatch: # This adds a manual "Run" button in GitHub
+  workflow_dispatch: # Manual "Run" button
 
 jobs:
   ping-apps:
@@ -13,15 +13,14 @@ jobs:
       - name: Pinging Streamlit Apps
         run: |
           echo "Waking up App 1..."
-          curl -L -I https://boardgame-scout.streamlit.app/
+          curl --silent --location --max-time 20 --output /dev/null https://boardgame-scout.streamlit.app/ || echo "Ping 1 completed"
           
           sleep 5
           
           echo "Waking up App 2..."
-          curl -L -I https://boardgame-guru.streamlit.app/
+          curl --silent --location --max-time 20 --output /dev/null https://boardgame-guru.streamlit.app/ || echo "Ping 2 completed"
           
           sleep 5
           
           echo "Waking up App 3..."
-          curl -L -I https://pdf-tool-gq65yveqrtwkqlxqmjznxt.streamlit.app/
-
+          curl --silent --location --max-time 20 --output /dev/null https://pdf-tool-gq65yveqrtwkqlxqmjznxt.streamlit.app/ || echo "Ping 3 completed"
