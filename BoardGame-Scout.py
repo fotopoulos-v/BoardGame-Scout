@@ -20,12 +20,28 @@ st.set_page_config(
     page_icon="./assets/images/scout_logo.png",
     layout="wide"
 )
-# --- hide Streamlit default header/footer/menu ---
+# Hide the "Grey Bar" (Community Toolbar) but keep the Three Dots and Sidebar toggle
 st.markdown("""
     <style>
-    header {visibility: hidden;}
-    footer {visibility: hidden;}
-    #MainMenu {visibility: hidden;}
+    /* 1. This hides the fork, star, and github links in the toolbar */
+    section[data-testid="stCustomComponentV1"] {
+        display: none;
+    }
+
+    /* 2. This specifically targets the "toolbar" container that holds those buttons */
+    div[data-testid="stToolbar"] {
+        visibility: hidden;
+    }
+    
+    /* 3. This ensures the "Three Dots" menu remains visible */
+    button[aria-label="Manage app"] {
+        visibility: visible;
+    }
+
+    /* 4. This ensures the Sidebar Toggle (the > arrow) remains visible */
+    button[data-testid="collapsedControl"] {
+        visibility: visible;
+    }
     </style>
     """, unsafe_allow_html=True)
 
