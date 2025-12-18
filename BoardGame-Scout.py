@@ -21,26 +21,36 @@ st.set_page_config(
     layout="wide"
 )
 # Hide the "Grey Bar" (Community Toolbar) but keep the Three Dots and Sidebar toggle
+import streamlit as st
+
 st.markdown("""
     <style>
-    /* 1. This hides the fork, star, and github links in the toolbar */
-    section[data-testid="stCustomComponentV1"] {
-        display: none;
+    /* 1. Hide the entire Community/Fork/GitHub toolbar section */
+    div[data-testid="stToolbar"] {
+        display: none !important;
     }
 
-    /* 2. This specifically targets the "toolbar" container that holds those buttons */
-    div[data-testid="stToolbar"] {
-        visibility: hidden;
+    /* 2. Hide the decoration line (the colorful line at the very top) */
+    div[data-testid="stDecoration"] {
+        display: none !important;
+    }
+
+    /* 3. Ensure the Sidebar Toggle (the > arrow) stays visible and clickable */
+    button[data-testid="collapsedControl"] {
+        visibility: visible !important;
+        background-color: transparent !important;
+    }
+
+    /* 4. Ensure the Three Dots menu (⋮) stays visible */
+    /* Note: In newer Streamlit versions, this button is inside the header 
+       but outside the data-testid="stToolbar" section */
+    header[data-testid="stHeader"] {
+        background-color: transparent !important;
     }
     
-    /* 3. This ensures the "Three Dots" menu remains visible */
-    button[aria-label="Manage app"] {
-        visibility: visible;
-    }
-
-    /* 4. This ensures the Sidebar Toggle (the > arrow) remains visible */
-    button[data-testid="collapsedControl"] {
-        visibility: visible;
+    /* This targets the menu button specifically */
+    button[aria-label="Manage app"], button[id="MainMenu"] {
+        visibility: visible !important;
     }
     </style>
     """, unsafe_allow_html=True)
