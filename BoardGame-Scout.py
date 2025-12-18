@@ -20,7 +20,14 @@ st.set_page_config(
     page_icon="./assets/images/scout_logo.png",
     layout="wide"
 )
-
+# --- hide Streamlit default header/footer/menu ---
+st.markdown("""
+    <style>
+    header {visibility: hidden;}
+    footer {visibility: hidden;}
+    #MainMenu {visibility: hidden;}
+    </style>
+    """, unsafe_allow_html=True)
 
 
 
