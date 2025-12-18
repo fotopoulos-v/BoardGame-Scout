@@ -25,31 +25,30 @@ import streamlit as st
 
 st.markdown("""
     <style>
-    /* 1. Hide the entire Community/Fork/GitHub toolbar section */
+    /* 1. This targets the specific 'Community' section (GitHub/Fork) */
+    /* and makes it invisible without moving other buttons */
+    section[data-testid="stCustomComponentV1"] {
+        display: none !important;
+    }
+
+    /* 2. In newest versions, the toolbar is a div. This hides it */
+    /* while keeping the header area available for the sidebar toggle */
     div[data-testid="stToolbar"] {
         display: none !important;
     }
 
-    /* 2. Hide the decoration line (the colorful line at the very top) */
+    /* 3. This removes the 'decoration' line at the very top */
     div[data-testid="stDecoration"] {
         display: none !important;
     }
 
-    /* 3. Ensure the Sidebar Toggle (the > arrow) stays visible and clickable */
-    button[data-testid="collapsedControl"] {
-        visibility: visible !important;
-        background-color: transparent !important;
+    /* 4. Force the header to be transparent so there's no grey bar background */
+    header[data-testid="stHeader"] {
+        background-color: rgba(0,0,0,0) !important;
     }
 
-    /* 4. Ensure the Three Dots menu (⋮) stays visible */
-    /* Note: In newer Streamlit versions, this button is inside the header 
-       but outside the data-testid="stToolbar" section */
-    header[data-testid="stHeader"] {
-        background-color: transparent !important;
-    }
-    
-    /* This targets the menu button specifically */
-    button[aria-label="Manage app"], button[id="MainMenu"] {
+    /* 5. Ensure the sidebar 'open' button and the 3-dots menu stay clickable */
+    button[data-testid="collapsedControl"], button[aria-label="Manage app"], button[id="MainMenu"] {
         visibility: visible !important;
     }
     </style>
