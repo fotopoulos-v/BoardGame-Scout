@@ -2,9 +2,9 @@ name: Keep All Apps Awake
 
 on:
   schedule:
-    # Runs at 01:12 UTC (03:12 AM Greece Winter time) every 2 days
-    - cron: '12 1 */2 * *'
-  workflow_dispatch: # Manual "Run" button
+    # Runs at 00:00 and 12:00 UTC every day
+    - cron: '0 */12 * * *'
+  workflow_dispatch: # Allows you to run it manually for testing
 
 jobs:
   ping-apps:
@@ -12,15 +12,18 @@ jobs:
     steps:
       - name: Pinging Streamlit Apps
         run: |
-          echo "Waking up App 1..."
-          curl --silent --location --max-time 20 --output /dev/null https://boardgame-scout.streamlit.app/ || echo "Ping 1 completed"
+          # Define a common User-Agent to mimic a real browser
+          USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+
+          echo "Waking up App 1 (Scout)..."
+          curl -L -A "$USER_AGENT" --max-time 60 --output /dev/null https://boardgame-scout.streamlit.app/ && echo "App 1 Ping Success" || echo "App 1 Ping Failed/Timed out"
           
-          sleep 5
+          sleep 10
           
-          echo "Waking up App 2..."
-          curl --silent --location --max-time 20 --output /dev/null https://boardgame-guru.streamlit.app/ || echo "Ping 2 completed"
+          echo "Waking up App 2 (Guru)..."
+          curl -L -A "$USER_AGENT" --max-time 60 --output /dev/null https://boardgame-guru.streamlit.app/ && echo "App 2 Ping Success" || echo "App 2 Ping Failed/Timed out"
           
-          sleep 5
+          sleep 10
           
-          echo "Waking up App 3..."
-          curl --silent --location --max-time 20 --output /dev/null https://pdf-tool-gq65yveqrtwkqlxqmjznxt.streamlit.app/ || echo "Ping 3 completed"
+          echo "Waking up App 3 (PDF Tool)..."
+          curl -L -A "$USER_AGENT" --max-time 60 --output /dev/null https://pdf-tool-gq65yveqrtwkqlxqmjznxt.streamlit.app/ && echo "App 3 Ping Success" || echo "App 3 Ping Failed/Timed out"
