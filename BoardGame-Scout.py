@@ -1298,6 +1298,126 @@ st.markdown("""
 
 
 
+# if st.session_state.get("show_user_section", False):
+#     st.subheader("🎮 Retrieve Your BGG Collection")
+    
+#     col_username, col_list, col_reveal, col_rec = st.columns([2, 1.5, 1.4, 2], gap='small')
+
+#     with col_username:
+#         username = st.text_input("Enter your BoardGameGeek username:", label_visibility="collapsed", placeholder="BGG username")
+#     with col_list:
+#         option = st.selectbox("Choose list:", ["Owned Games", "Rated Games", "Wishlist"], label_visibility="collapsed")
+#     with col_reveal:
+#         reveal_clicked = st.button("See your games", key="reveal_btn")
+#     with col_rec:
+#         recommend_clicked = st.button("Recommended for you!", key="rec_btn")
+
+#     # ---------- logic ----------
+#     if recommend_clicked:
+#         if not username:
+#             st.error("Please enter a username.")
+#         else:
+#             st.session_state["user_sub_view"] = "recommendations"   # ← mark active view
+#             with st.spinner("Building your personal Greek-guild top list..."):
+#                 rec_df = recommend_games(username, RECOMMEND_COUNT)
+#                 st.session_state["rec_df"] = rec_df          # ← store DF under expected key
+#             if rec_df.empty:
+#                 st.warning("Not enough ratings yet (need ≥ 10 rated games and ≥ 25 Greek neighbours).")
+#             else:
+#                 st.success(f"🎯 Here are {len(rec_df)} games you might love!")
+    
+#     # Map display names to API flags
+#     flag_map = {
+#         "Owned Games": "own",
+#         "Rated Games": "rated",
+#         "Wishlist": "wishlist",
+#     }
+
+    
+#     if reveal_clicked:
+#         if not username:
+#             st.error("Please enter a username.")
+#         else:
+#             st.session_state["user_sub_view"] = "collection"   # ← mark active view
+#             with st.spinner(f"Fetching {option}..."):
+#                 df, error = fetch_bgg_collection(username, flag_map[option])
+#             if error:
+#                 st.error(error)
+#             else:
+#                 st.session_state["bgg_collection_df"] = df
+#                 st.session_state["bgg_page"] = 0
+#                 st.success(f"✅ Found {len(df)} games!")
+        
+#     # Display paginated results if data exists
+#     # ----------  SHOW THE RIGHT TABLE  ----------
+#     sub_view = st.session_state.get("user_sub_view")
+#     bgg_page = st.session_state.get("bgg_page", 0) 
+
+
+#     if sub_view == "collection" and "bgg_collection_df" in st.session_state:
+#         # =====  COLLECTION PAGINATION  =====
+#         df_full   = st.session_state["bgg_collection_df"]
+#         bgg_page  = st.session_state.get("bgg_page", 0)
+#         total_rows= len(df_full)
+#         start_idx = bgg_page * PAGE_SIZE + 1
+#         end_idx   = min(bgg_page * PAGE_SIZE + PAGE_SIZE, total_rows)
+#         st.markdown(f"**Results: {start_idx}–{end_idx} from {total_rows:,}**")
+#         df_page   = df_full.iloc[(start_idx-1):end_idx].copy()
+#         df_page.index = range(start_idx, end_idx + 1)
+#         df_page.index.name = "No."
+#         st.dataframe(df_page, use_container_width=True)
+
+#         # Prev / Next buttons  (INSIDE the collection branch)
+#         col_spacer_left, col_pagination, col_spacer_right = st.columns([2, 1.5, 2])
+#         with col_pagination:
+#             cprev_bgg, cnext_bgg = st.columns([1, 1])
+#             with cprev_bgg:
+#                 if bgg_page > 0:
+#                     if st.button("◀ Prev", key="prev_bgg_btn", type="secondary"):
+#                         st.session_state["bgg_page"] = bgg_page - 1
+#                         st.rerun()
+#             with cnext_bgg:
+#                 if (bgg_page + 1) * PAGE_SIZE < total_rows:
+#                     if st.button("Next ▶", key="next_bgg_btn", type="secondary"):
+#                         st.session_state["bgg_page"] = bgg_page + 1
+#                         st.rerun()
+
+#         st.markdown("""
+#             <style>
+#             /* BGG Prev button */
+#             div.stElementContainer.st-key-prev_bgg_btn div.stButton > button,
+#             div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"] {
+#                 background-color: #212B45 !important;   
+#                 color: white !important;
+#                 border: 1px solid #333 !important;
+#                 width: 120px !important;
+#                 height: 38px !important;
+#                 font-size: 16px !important;
+#             }
+#             div.stElementContainer.st-key-prev_bgg_btn div.stButton > button:hover,
+#             div.stElementContainer.st-key-prev_bgg_btn button[kind="secondary"]:hover {
+#                 background-color: #041D5C !important;
+#                 transform: scale(1.05);
+#             }
+            
+#             /* BGG Next button */
+#             div.stElementContainer.st-key-next_bgg_btn div.stButton > button,
+#             div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"] {
+#                 background-color: #212B45 !important;   
+#                 color: white !important;
+#                 border: 1px solid #333 !important;
+#                 width: 120px !important;
+#                 height: 38px !important;
+#                 font-size: 16px !important;
+#             }
+#             div.stElementContainer.st-key-next_bgg_btn div.stButton > button:hover,
+#             div.stElementContainer.st-key-next_bgg_btn button[kind="secondary"]:hover {
+#                 background-color: #041D5C !important;
+#                 transform: scale(1.05);
+#             }
+#             </style>
+#         """, unsafe_allow_html=True)
+
 if st.session_state.get("show_user_section", False):
     st.subheader("🎮 Retrieve Your BGG Collection")
     
@@ -1321,8 +1441,33 @@ if st.session_state.get("show_user_section", False):
             with st.spinner("Building your personal Greek-guild top list..."):
                 rec_df = recommend_games(username, RECOMMEND_COUNT)
                 st.session_state["rec_df"] = rec_df          # ← store DF under expected key
+            
             if rec_df.empty:
-                st.warning("Not enough ratings yet (need ≥ 10 rated games and ≥ 25 Greek neighbours).")
+                # Get more detailed diagnostics
+                import sqlite3
+                conn = sqlite3.connect(DB_RATINGS)
+                user_ratings_count = pd.read_sql(
+                    "SELECT COUNT(*) as count FROM ratings WHERE username = ?", 
+                    conn, 
+                    params=(username,)
+                )["count"].iloc[0]
+                conn.close()
+                
+                sim_df = build_user_similarity_matrix()
+                neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+                num_neighbours = len(neighbours)
+                
+                # Provide specific feedback based on what failed
+                if user_ratings_count == 0:
+                    st.warning(f"⚠️ No ratings found for username '{username}'. Please rate some games on BoardGameGeek first.")
+                elif user_ratings_count < 5:
+                    st.warning(f"⚠️ You have only {user_ratings_count} rated game{'s' if user_ratings_count != 1 else ''}. Please rate at least 5 games to get recommendations.")
+                elif num_neighbours == 0:
+                    st.warning(f"⚠️ Not enough similar Greek users found. You have {user_ratings_count} ratings, but they don't overlap enough with other Greek users. Try rating more popular games that Greek gamers have also rated (need at least {MIN_OVERLAP} games in common with other users).")
+                elif num_neighbours < 5:
+                    st.warning(f"⚠️ Only found {num_neighbours} similar Greek user{'s' if num_neighbours != 1 else ''}, not enough for reliable recommendations. Try rating more games to find more neighbors.")
+                else:
+                    st.warning(f"⚠️ Unable to generate recommendations. You have {user_ratings_count} ratings and {num_neighbours} similar users, but not enough overlap on unrated games. Try rating more diverse games.")
             else:
                 st.success(f"🎯 Here are {len(rec_df)} games you might love!")
     
@@ -1417,8 +1562,6 @@ if st.session_state.get("show_user_section", False):
             }
             </style>
         """, unsafe_allow_html=True)
-
-
 
 
 
