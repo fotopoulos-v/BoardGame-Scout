@@ -1,0 +1,25 @@
+name: Build Greek User Ratings Database
+
+on:
+  schedule:
+    # Every 3 days at 02:00 UTC
+    - cron: "0 2 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  build-greek-ratings:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Verify environment
+        run: |
+          python --version
+          echo "BGG_TOKEN is set: ${{ secrets.BGG_TOKEN != '' }}"
