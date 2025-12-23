@@ -1,14 +1,17 @@
-name: Build Greek User Ratings Database
+name: Update Greek User Ratings Database
 
 on:
-  schedule:
-    # Every 3 days at 02:00 UTC
-    - cron: "0 2 */3 * *"
   workflow_dispatch:
+  schedule:
+    # every 3 days at 03:00 UTC
+    - cron: "0 3 */3 * *"
 
 jobs:
-  build-greek-ratings:
+  build-and-release:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write   # REQUIRED to upload release assets
 
     steps:
       - name: Checkout repository
@@ -23,3 +26,26 @@ jobs:
         run: |
           python --version
           echo "BGG_TOKEN is set: ${{ secrets.BGG_TOKEN != '' }}"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests beautifulsoup4 toml
+
+      - name: Build greek_user_ratings.db
+        env:
+          BGG_TOKEN: ${{ secrets.BGG_TOKEN }}
+        run: |
+          python fetch_greek_ratings.py
+
+      - name: Verify database file
+        run: |
+          ls -lh greek_user_ratings.db
+
+      - name: Upload DB to GitHub Release (overwrite)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: greek-user-ratings
+          files: greek_user_ratings.db
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
