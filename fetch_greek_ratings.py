@@ -13,38 +13,7 @@ import os
 from typing import List, Dict
 import toml
 
-# # Get BGG token from secrets.toml
-# def load_bgg_token():
-#     """Load BGG token from .streamlit/secrets.toml"""
-#     secrets_path = '.streamlit/secrets.toml'
-    
-#     if not os.path.exists(secrets_path):
-#         print(f"⚠️ Error: {secrets_path} not found!")
-#         print("\nTo get a BGG token:")
-#         print("1. Go to https://boardgamegeek.com/manage/applications")
-#         print("2. Register your app (free for non-commercial)")
-#         print("3. Create a token")
-#         print("4. Add it to .streamlit/secrets.toml as:")
-#         print("   BGG_TOKEN = 'your_token_here'")
-#         return None
-    
-#     try:
-#         with open(secrets_path, 'r') as f:
-#             secrets = toml.load(f)
-#             bgg_token = secrets.get('BGG_TOKEN', '')
-            
-#             if not bgg_token:
-#                 print("⚠️ BGG_TOKEN is missing from secrets.toml!")
-#                 print("\nPlease add it to .streamlit/secrets.toml as:")
-#                 print("   BGG_TOKEN = 'your_token_here'")
-#                 return None
-            
-#             print("✓ BGG_TOKEN loaded successfully from secrets.toml")
-#             return bgg_token
-    
-#     except Exception as e:
-#         print(f"Error reading secrets.toml: {e}")
-#         return None
+
 
 BGG_TOKEN = os.getenv("BGG_TOKEN")
 
