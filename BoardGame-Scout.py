@@ -188,15 +188,10 @@ if os.path.exists(DB_RATINGS):
     age_seconds = time.time() - os.path.getmtime(DB_RATINGS)
     age_hours = age_seconds / 3600
     age_days = age_hours / 24
-
-    print(
-        f"🧠 Greek ratings DB age: "
-        f"{age_hours:.1f} hours ({age_days:.2f} days)"
+    import logging
+    logging.warning(
+        f"Greek ratings DB age: {age_hours:.1f} hours"
     )
-
-
-
-
 
 
 
