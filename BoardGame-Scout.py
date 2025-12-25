@@ -724,7 +724,8 @@ def fetch_hot_games():
 
 # -------------------------
 # Search input field (full width)
-search_query = st.text_input("", placeholder="Enter a board game name (optional)", key="search_query")
+search_query = st.text_input("Search board games", placeholder="Enter a board game name (optional)", 
+                             key="search_query", label_visibility="collapsed")
 
 
 
@@ -844,7 +845,7 @@ with st.expander("🎚️ Filters"):
                 f'{label + " ✅" if active else label}</div>',
                 unsafe_allow_html=True
             )
-            st.text_input("", key=key)
+            st.text_input("Category", key=key, label_visibility="collapsed")
 
         # labeled_text_filter("f_category", "Type / Category")
         # CATEGORY multiselect
@@ -859,7 +860,7 @@ with st.expander("🎚️ Filters"):
             f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
             unsafe_allow_html=True
         )
-        st.multiselect("", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
+        st.multiselect("Select categories", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
 
 
 
@@ -876,7 +877,7 @@ with st.expander("🎚️ Filters"):
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
-        st.multiselect("", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
+        st.multiselect("Select mechanics", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
 
     # -------------------------------------------------
     # COLUMN 3 — Designers + Artists + Publishers
@@ -900,7 +901,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max Complexity (1-5) ✅" if comp_active else "Max Complexity (1-5)"}</div>',
             unsafe_allow_html=True
         )
-        st.slider("", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider")
+        st.slider("Minimum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider", label_visibility="collapsed")
 
         # MIN AGE
         if "min_age" not in st.session_state:
