@@ -28,9 +28,7 @@ ZIP_PATH = "boardgames_db.zip"
 GITHUB_REPO = "fotopoulos-v/BoardGame-Scout"  
 
 
-# ==========================================
-# DATABASE DOWNLOAD FUNCTION
-# ==========================================
+
 # ==========================================
 # DATABASE DOWNLOAD FUNCTION (NO GITHUB API)
 # ==========================================
@@ -96,83 +94,49 @@ def download_database():
 
 
 
+# ==========================================
+# GREEK RATINGS DATABASE DOWNLOAD FUNCTION
+# ==========================================
 
+def download_greek_ratings_db():
+    """
+    Download greek_user_ratings.db directly from GitHub releases
+    if missing or stale.
+    """
 
+    # --- 1. Check local DB age ---
+    if os.path.exists(DB_RATINGS):
+        age = time.time() - os.path.getmtime(DB_RATINGS)
+        if age < RATINGS_REFRESH_INTERVAL:
+            print(f"✅ Using existing Greek ratings DB (age: {age/3600:.1f} hours)")
+            return DB_RATINGS
+        print("⬇️ Greek ratings DB is stale — downloading new version")
+    else:
+        print("⬇️ No Greek ratings DB found — downloading")
 
-# def download_database():
-#     """Download the latest database from GitHub releases if newer than local copy."""
-    
-#     RELEASE_TAG = "boardgame-database"
+    # --- 2. Download directly ---
+    try:
+        response = requests.get(RATINGS_DB_URL, stream=True, timeout=120)
+        response.raise_for_status()
 
-#     print("🔎 Checking GitHub release for database updates...")
+        with open(DB_RATINGS, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
 
-#     try:
-#         # --- 1. Fetch release metadata ---
-#         release_url = f"https://api.github.com/repos/{GITHUB_REPO}/releases/tags/{RELEASE_TAG}"
-#         response = requests.get(release_url, timeout=30)
-#         response.raise_for_status()
-#         release_data = response.json()
+        size = os.path.getsize(DB_RATINGS)
+        print(f"✅ Greek ratings DB downloaded ({size:,} bytes)")
+        return DB_RATINGS
 
-#         # Parse GitHub release updated time (UTC)
-#         release_updated_at = release_data["updated_at"]
-#         release_ts = datetime.fromisoformat(
-#             release_updated_at.replace("Z", "+00:00")
-#         ).timestamp()
+    except Exception as e:
+        print(f"❌ Greek ratings DB download failed: {e}")
 
-#         # --- 2. Check local DB timestamp ---
-#         if os.path.exists(DB_PATH):
-#             local_ts = os.path.getmtime(DB_PATH)
+        if os.path.exists(DB_RATINGS):
+            st.warning(f"⚠️ Using cached Greek ratings DB ({e})")
+            return DB_RATINGS
 
-#             if local_ts >= release_ts:
-#                 print("✅ Local database is already up to date with GitHub release")
-#                 return DB_PATH
-#             else:
-#                 print("⬇️ Newer database found on GitHub — downloading update")
-#         else:
-#             print("⬇️ No local database found — downloading")
-
-#         # --- 3. Find database zip asset ---
-#         zip_asset = None
-#         for asset in release_data.get("assets", []):
-#             if asset["name"] == "boardgames_db.zip":
-#                 zip_asset = asset
-#                 break
-
-#         if not zip_asset:
-#             raise Exception("boardgames_db.zip not found in release assets")
-
-#         zip_url = zip_asset["browser_download_url"]
-#         print(f"📡 Downloading from: {zip_url}")
-
-#         # --- 4. Download zip ---
-#         zip_response = requests.get(zip_url, stream=True, timeout=60)
-#         zip_response.raise_for_status()
-
-#         with open(ZIP_PATH, "wb") as f:
-#             for chunk in zip_response.iter_content(chunk_size=8192):
-#                 if chunk:
-#                     f.write(chunk)
-
-#         # --- 5. Extract ---
-#         with zipfile.ZipFile(ZIP_PATH, "r") as zip_ref:
-#             zip_ref.extractall(".")
-
-#         os.remove(ZIP_PATH)
-
-#         file_size = os.path.getsize(DB_PATH)
-#         print(f"✅ Database updated successfully ({file_size:,} bytes)")
-#         return DB_PATH
-
-#     except Exception as e:
-#         print(f"❌ Download error: {e}")
-
-#         # Fallback: use existing DB if available
-#         if os.path.exists(DB_PATH):
-#             st.warning(f"⚠️ Using existing database (update failed: {e})")
-#             return DB_PATH
-
-#         st.error(f"❌ Cannot load database: {e}")
-#         return None
+        st.error("❌ Cannot load Greek ratings database.")
+        return None
 
 
 
@@ -188,6 +152,20 @@ db_path = download_database()
 if not db_path:
     st.error("❌ Cannot load database. Please try again later.")
     st.stop()
+
+# ==========================================
+# iNITIALIZE GREEK RATINGS DATABASE
+# =========================================
+
+ratings_db_path = download_greek_ratings_db()
+
+if not ratings_db_path:
+    st.error("❌ Cannot load Greek ratings database.")
+    st.stop()
+
+
+
+
 
 conn = sqlite3.connect(db_path)
 
@@ -552,7 +530,7 @@ if "user_sub_view" not in st.session_state:   # values: None | "collection" | "r
     st.session_state["user_sub_view"] = None
 
 PAGE_SIZE = 50
-DB_PATH = "boardgames.db"   
+# DB_PATH = "boardgames.db"   
 
 
 
@@ -1134,6 +1112,25 @@ DB_RATINGS = "greek_user_ratings.db"   # the db your scraper built
 MIN_OVERLAP = 5                        # at least 5 co-rated games to trust similarity
 NEIGHBOURS  = 25                       # top-k Greek users whose taste we trust
 RECOMMEND_COUNT = 20                   # how many titles to show in the UI
+
+RATINGS_REFRESH_INTERVAL = 3 * 24 * 60 * 60  # 3 days
+RATINGS_DB_URL = (
+    "https://github.com/"
+    "fotopoulos-v/BoardGame-Scout/"
+    "releases/download/greek-user-ratings/greek_user_ratings.db")
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 @st.cache_data(show_spinner=False)
 def build_user_similarity_matrix() -> pd.DataFrame:
