@@ -777,7 +777,7 @@ with st.expander("🎚️ Filters"):
             f'{"Players (From) ✅" if min_p_active else "Players (From)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=1, max_value=20, key="min_players")
+        st.number_input("Minimum players", min_value=1, max_value=20, key="min_players", label_visibility="collapsed")
 
         max_p_active = st.session_state["max_players"] is not None
         st.markdown(
@@ -785,7 +785,7 @@ with st.expander("🎚️ Filters"):
             f'{"Players (To) ✅" if max_p_active else "Players (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=1, max_value=20, key="max_players")
+        st.number_input("Maximum players", min_value=1, max_value=20, key="max_players", label_visibility="collapsed")
 
         # YEAR
         for key in ["min_year", "max_year"]:
@@ -798,7 +798,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (From) ✅" if min_y_active else "Year (From)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=1900, max_value=2100, key="min_year")
+        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year", label_visibility="collapsed")
 
         max_y_active = st.session_state["max_year"] is not None
         st.markdown(
@@ -806,7 +806,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (To) ✅" if max_y_active else "Year (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=1900, max_value=2100, key="max_year")
+        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
 
     # -------------------------------------------------
     # COLUMN 2 — Duration + Category + Mechanics
@@ -823,7 +823,7 @@ with st.expander("🎚️ Filters"):
             f'{"Min duration (min) ✅" if min_d_active else "Min duration (min)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=1, max_value=600, key="min_duration")
+        st.number_input("Minimum duration", min_value=1, max_value=600, key="min_duration", label_visibility="collapsed")
 
         # MAX DURATION
         max_d_active = st.session_state["max_duration"] is not None
@@ -832,7 +832,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max duration (min) ✅" if max_d_active else "Max duration (min)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=1, max_value=600, key="max_duration")
+        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
 
         # CATEGORY
         def labeled_text_filter(key, label):
@@ -912,7 +912,7 @@ with st.expander("🎚️ Filters"):
             f'{"Min Age ✅" if age_active else "Min Age"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=0, max_value=99, key="min_age")
+        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age", label_visibility="collapsed")
 
         # MAX RESULTS
         if "max_results" not in st.session_state:
@@ -924,7 +924,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max Results ⚠️" if mr_active else "Max Results (0 = unlimited)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("", min_value=0, max_value=1_000_000, key="max_results")
+        st.number_input("Maximum results", min_value=0, max_value=1_000_000, key="max_results", label_visibility="collapsed")
 
 
 
