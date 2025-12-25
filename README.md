@@ -30,6 +30,32 @@ If you enjoy it, consider showing your support — it helps keep the app online 
 
 ---
 
+## 🔄 Automated Database Updates
+
+BoardGame Scout uses **two automated GitHub Actions** to keep its data fresh and reliable.
+
+### 📦 Board games database
+- A GitHub Action runs **daily**
+- It fetches and processes BoardGameGeek data
+- The resulting SQLite database is published as a **GitHub Release asset**
+- The Streamlit app downloads it automatically when needed
+
+### 🇬🇷 Greek user ratings database
+- A separate GitHub Action runs **every 3 days**
+- It rebuilds a database of ratings from Greek BoardGameGeek guild members
+- The database is published as a **GitHub Release asset**
+- Used for **collaborative-filtering recommendations**
+
+### ✅ Why this approach?
+- No heavy data files stored in the repository
+- No manual updates required
+- No API rate-limit issues at runtime
+- Fast app startup and consistent data freshness
+
+All downloads are handled transparently by the app in the background.
+
+---
+
 ## 🧩 How It Works
 
 <p align="justify">
