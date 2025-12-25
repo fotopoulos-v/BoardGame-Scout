@@ -1400,7 +1400,7 @@ if st.session_state.get("show_user_section", False):
         df_page   = df_full.iloc[(start_idx-1):end_idx].copy()
         df_page.index = range(start_idx, end_idx + 1)
         df_page.index.name = "No."
-        st.dataframe(df_page, use_container_width=True)
+        st.dataframe(df_page, width="stretch")
 
         # Prev / Next buttons  (INSIDE the collection branch)
         col_spacer_left, col_pagination, col_spacer_right = st.columns([2, 1.5, 2])
@@ -1471,7 +1471,7 @@ if st.session_state.get("show_user_section", False):
                 # 3. pretty index
                 rec_df.index = range(1, len(rec_df)+1)
                 rec_df.index.name = "No."
-                st.dataframe(rec_df, use_container_width=True)
+                st.dataframe(rec_df, width="stretch")
                 
                 # Pagination button styling (NOT NEEDED IF THE RECOMMENDATIONS ARE < 51)
                 st.markdown("""
@@ -1749,7 +1749,7 @@ if st.session_state.get("show_search_results"):
         # --------------------------------------------
 
 
-        st.dataframe(df_display, use_container_width=True)
+        st.dataframe(df_display, width="stretch")
 
 
         # Pagination controls - centered container
@@ -1816,7 +1816,7 @@ elif st.session_state.get("show_hot_games"):
         df_hot.index.name = "No."
         st.subheader("🔥 Hot Board Games")
         st.caption("💡 Board games trending right now! (Data powered by BGG XML API)")
-        st.dataframe(df_hot, use_container_width=True)
+        st.dataframe(df_hot, width="stretch")
 
     else:
         st.warning("No hot games found right now.")
