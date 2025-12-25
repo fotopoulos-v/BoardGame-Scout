@@ -22,10 +22,24 @@ st.set_page_config(
 )
 
 
-
+# ==========================
+# CONSTANTS
+# ==========================
 DB_PATH = "boardgames.db"
 ZIP_PATH = "boardgames_db.zip"
 GITHUB_REPO = "fotopoulos-v/BoardGame-Scout"  
+
+
+DB_RATINGS = "greek_user_ratings.db"   # the db your scraper built
+MIN_OVERLAP = 5                        # at least 5 co-rated games to trust similarity
+NEIGHBOURS  = 25                       # top-k Greek users whose taste we trust
+RECOMMEND_COUNT = 20                   # how many titles to show in the UI
+
+RATINGS_REFRESH_INTERVAL = 3 * 24 * 60 * 60  # 3 days
+RATINGS_DB_URL = (
+    "https://github.com/"
+    "fotopoulos-v/BoardGame-Scout/"
+    "releases/download/greek-user-ratings/greek_user_ratings.db")
 
 
 
@@ -1107,30 +1121,14 @@ if search_clicked:
 
 
 
+
+
+
+
+
+
+
 # ========== USER-BASED COLLABORATIVE FILTERING ==========
-DB_RATINGS = "greek_user_ratings.db"   # the db your scraper built
-MIN_OVERLAP = 5                        # at least 5 co-rated games to trust similarity
-NEIGHBOURS  = 25                       # top-k Greek users whose taste we trust
-RECOMMEND_COUNT = 20                   # how many titles to show in the UI
-
-RATINGS_REFRESH_INTERVAL = 3 * 24 * 60 * 60  # 3 days
-RATINGS_DB_URL = (
-    "https://github.com/"
-    "fotopoulos-v/BoardGame-Scout/"
-    "releases/download/greek-user-ratings/greek_user_ratings.db")
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 @st.cache_data(show_spinner=False)
 def build_user_similarity_matrix() -> pd.DataFrame:
