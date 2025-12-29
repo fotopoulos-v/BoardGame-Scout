@@ -526,32 +526,32 @@ with st.sidebar:
     )
 
 
-## DEBUG
-st.sidebar.markdown("### 🧪 Greek ratings DB diagnostics")
+# ## DEBUG
+# st.sidebar.markdown("### 🧪 Greek ratings DB diagnostics")
 
-st.sidebar.write("DB path:", os.path.abspath(DB_RATINGS))
+# st.sidebar.write("DB path:", os.path.abspath(DB_RATINGS))
 
-if os.path.exists(DB_RATINGS):
-    st.sidebar.write("DB size (bytes):", os.path.getsize(DB_RATINGS))
-    st.sidebar.write(
-        "DB last modified:",
-        time.strftime(
-            "%Y-%m-%d %H:%M:%S",
-            time.localtime(os.path.getmtime(DB_RATINGS))
-        )
-    )
+# if os.path.exists(DB_RATINGS):
+#     st.sidebar.write("DB size (bytes):", os.path.getsize(DB_RATINGS))
+#     st.sidebar.write(
+#         "DB last modified:",
+#         time.strftime(
+#             "%Y-%m-%d %H:%M:%S",
+#             time.localtime(os.path.getmtime(DB_RATINGS))
+#         )
+#     )
 
-    conn = sqlite3.connect(DB_RATINGS)
-    count = pd.read_sql(
-        "SELECT COUNT(*) c FROM ratings WHERE username = ?",
-        conn,
-        params=("fotbill13",)
-    )["c"].iloc[0]
-    conn.close()
+#     conn = sqlite3.connect(DB_RATINGS)
+#     count = pd.read_sql(
+#         "SELECT COUNT(*) c FROM ratings WHERE username = ?",
+#         conn,
+#         params=("fotbill13",)
+#     )["c"].iloc[0]
+#     conn.close()
 
-    st.sidebar.write("Ratings for fotbill13:", int(count))
-else:
-    st.sidebar.error("DB file does not exist")
+#     st.sidebar.write("Ratings for fotbill13:", int(count))
+# else:
+#     st.sidebar.error("DB file does not exist")
 
 
 
