@@ -22,6 +22,8 @@ st.set_page_config(
 )
 
 
+st.cache_data.clear()
+
 # ==========================
 # CONSTANTS
 # ==========================
