@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 
-st.cache_data.clear()
+
 
 # ==========================
 # CONSTANTS
@@ -1142,7 +1142,7 @@ if search_clicked:
 
 # ========== USER-BASED COLLABORATIVE FILTERING ==========
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=36, show_spinner=False)
 def build_user_similarity_matrix() -> pd.DataFrame:
     """
     Offline step: load the ratings table, mean-centre, compute cosine
@@ -1187,7 +1187,7 @@ def build_user_similarity_matrix() -> pd.DataFrame:
 
 
 
-@st.cache_data(show_spinner=False)
+@st.cache_data(ttl=36, show_spinner=False)
 def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     """
     Produce recommendations for a *single* username.
