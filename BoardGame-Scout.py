@@ -1326,6 +1326,15 @@ if st.session_state.get("show_user_section", False):
         else:
             st.session_state["user_sub_view"] = "recommendations"   # ← mark active view
             with st.spinner("Building your personal Greek-guild top list..."):
+                conn = sqlite3.connect(DB_RATINGS)
+                check = pd.read_sql(
+                    "SELECT COUNT(*) c FROM ratings WHERE username = ?",
+                    conn,
+                    params=(username,)
+                )
+                conn.close()
+
+                st.write("Greek DB ratings count:", int(check["c"].iloc[0]))
                 rec_df = recommend_games(username, RECOMMEND_COUNT)
                 st.session_state["rec_df"] = rec_df          # ← store DF under expected key
             
