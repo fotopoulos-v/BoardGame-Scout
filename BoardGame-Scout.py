@@ -1016,10 +1016,10 @@ def fetch_bgg_collection(username, filter_flag, max_retries=10, delay=3):
                 if not items:
                     return None, f"No {filter_flag} games found for user '{username}'"
                 
-                # DEBUG: Print first item structure
-                if items and len(items) > 0:
-                    print("DEBUG - First item XML structure:")
-                    print(ET.tostring(items[0], encoding='unicode')[:500])
+                # # DEBUG: Print first item structure
+                # if items and len(items) > 0:
+                #     print("DEBUG - First item XML structure:")
+                #     print(ET.tostring(items[0], encoding='unicode')[:500])
                 
                 # Parse games into list
                 games = []
