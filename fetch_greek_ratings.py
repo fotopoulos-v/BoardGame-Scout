@@ -94,102 +94,194 @@ def fetch_guild_members(guild_id: int = 119) -> list[str]:
 
 
 
-def fetch_user_ratings(username: str, max_retries: int = 3) -> List[Dict]:
-    """
-    Fetch all game ratings from a user.
+# def fetch_user_ratings(username: str, max_retries: int = 3) -> List[Dict]:
+#     """
+#     Fetch all game ratings from a user.
     
-    Args:
-        username: BGG username
-        max_retries: Number of retry attempts
+#     Args:
+#         username: BGG username
+#         max_retries: Number of retry attempts
     
-    Returns:
-        List of dicts with game_id, rating, game_name
-    """
-    url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
+#     Returns:
+#         List of dicts with game_id, rating, game_name
+#     """
+#     url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
     
-    headers = {
-        "Authorization": f"Bearer {BGG_TOKEN}",
-        "User-Agent": "BoardGame Scout/1.0",
-        "Accept": "application/xml"
-    }
+#     headers = {
+#         "Authorization": f"Bearer {BGG_TOKEN}",
+#         "User-Agent": "BoardGame Scout/1.0",
+#         "Accept": "application/xml"
+#     }
     
-    for attempt in range(max_retries):
-        try:
-            # Add small delay before first request
-            if attempt == 0:
-                time.sleep(1)
+#     for attempt in range(max_retries):
+#         try:
+#             # Add small delay before first request
+#             if attempt == 0:
+#                 time.sleep(1)
             
-            response = requests.get(url, headers=headers, timeout=20)
+#             response = requests.get(url, headers=headers, timeout=20)
             
-            if response.status_code == 202:
-                # BGG is queuing the request
-                print(f"  Collection queued, waiting...")
-                time.sleep(3)
-                continue
+#             if response.status_code == 202:
+#                 # BGG is queuing the request
+#                 print(f"  Collection queued, waiting...")
+#                 time.sleep(3)
+#                 continue
             
-            if response.status_code == 401:
-                print(f"  ❌ Unauthorized - check BGG token")
-                return []
+#             if response.status_code == 401:
+#                 print(f"  ❌ Unauthorized - check BGG token")
+#                 return []
             
-            if response.status_code != 200:
-                return []
+#             if response.status_code != 200:
+#                 return []
             
-            root = ET.fromstring(response.content)
+#             root = ET.fromstring(response.content)
             
-            # Check if collection is empty
-            items = root.findall("item")
-            if not items:
-                return []
+#             # Check if collection is empty
+#             items = root.findall("item")
+#             if not items:
+#                 return []
             
-            ratings = []
-            for item in items:
-                game_id = item.attrib.get("objectid")
+#             ratings = []
+#             for item in items:
+#                 game_id = item.attrib.get("objectid")
                 
-                # Get game name
-                name_elem = item.find("name")
-                game_name = name_elem.text if name_elem is not None else "Unknown"
+#                 # Get game name
+#                 name_elem = item.find("name")
+#                 game_name = name_elem.text if name_elem is not None else "Unknown"
                 
-                # Get rating - check multiple possible locations
-                rating_value = None
+#                 # Get rating - check multiple possible locations
+#                 rating_value = None
                 
-                # Method 1: stats/rating element
-                stats = item.find("stats")
-                if stats is not None:
-                    rating_elem = stats.find("rating")
-                    if rating_elem is not None:
-                        # Check rating attribute
-                        rating_value = rating_elem.attrib.get("value")
+#                 # Method 1: stats/rating element
+#                 stats = item.find("stats")
+#                 if stats is not None:
+#                     rating_elem = stats.find("rating")
+#                     if rating_elem is not None:
+#                         # Check rating attribute
+#                         rating_value = rating_elem.attrib.get("value")
                         
-                        # Check value child element
-                        if not rating_value or rating_value == "N/A":
-                            value_elem = rating_elem.find("value")
-                            if value_elem is not None:
-                                rating_value = value_elem.attrib.get("value")
-                                if not rating_value:
-                                    rating_value = value_elem.text
+#                         # Check value child element
+#                         if not rating_value or rating_value == "N/A":
+#                             value_elem = rating_elem.find("value")
+#                             if value_elem is not None:
+#                                 rating_value = value_elem.attrib.get("value")
+#                                 if not rating_value:
+#                                     rating_value = value_elem.text
                 
-                # Try to convert to float
-                if rating_value and rating_value != "N/A":
-                    try:
-                        rating = float(rating_value)
-                        if rating > 0:  # Only include actual ratings (not 0)
-                            ratings.append({
-                                "game_id": int(game_id),
-                                "game_name": game_name,
-                                "rating": rating
-                            })
-                    except (ValueError, TypeError):
-                        continue
+#                 # Try to convert to float
+#                 if rating_value and rating_value != "N/A":
+#                     try:
+#                         rating = float(rating_value)
+#                         if rating > 0:  # Only include actual ratings (not 0)
+#                             ratings.append({
+#                                 "game_id": int(game_id),
+#                                 "game_name": game_name,
+#                                 "rating": rating
+#                             })
+#                     except (ValueError, TypeError):
+#                         continue
             
-            return ratings
+#             return ratings
         
-        except Exception as e:
-            if attempt == max_retries - 1:
-                print(f"  Error fetching ratings: {e}")
-                return []
-            time.sleep(2)
+#         except Exception as e:
+#             if attempt == max_retries - 1:
+#                 print(f"  Error fetching ratings: {e}")
+#                 return []
+#             time.sleep(2)
     
-    return []
+#     return []
+def fetch_user_ratings(username: str, max_retries: int = 10, page_size: int = 100) -> List[Dict]:
+    """
+    Fetch all boardgame ratings for a user from BGG, with retries and 202 queue handling.
+    """
+    all_ratings = []
+    page = 1
+
+    while True:
+        url = (
+            f"https://boardgamegeek.com/xmlapi2/collection"
+            f"?username={username}&rated=1&stats=1&subtype=boardgame&own=1&page={page}"
+        )
+        headers = {
+            "Authorization": f"Bearer {BGG_TOKEN}",
+            "User-Agent": "BoardGame Scout/1.0",
+            "Accept": "application/xml"
+        }
+
+        for attempt in range(max_retries):
+            try:
+                if attempt > 0:
+                    wait = 2 ** attempt
+                    print(f"  Retry {attempt} after {wait}s...")
+                    time.sleep(wait)
+
+                response = requests.get(url, headers=headers, timeout=30)
+                status = response.status_code
+
+                if status == 202:
+                    wait = 3 + attempt  # small backoff
+                    print(f"  BGG queued request, waiting {wait}s...")
+                    time.sleep(wait)
+                    continue
+                elif status == 401:
+                    print("  ❌ Unauthorized: check BGG_TOKEN")
+                    return []
+                elif status != 200:
+                    print(f"  Unexpected status {status}")
+                    continue
+
+                # parse XML
+                root = ET.fromstring(response.content)
+                items = root.findall("item")
+                if not items:
+                    print(f"  No more items on page {page}.")
+                    return all_ratings
+
+                page_ratings = []
+                for item in items:
+                    game_id = item.attrib.get("objectid")
+                    name_elem = item.find("name")
+                    game_name = name_elem.text if name_elem is not None else "Unknown"
+
+                    # find rating
+                    rating_value = None
+                    stats = item.find("stats")
+                    if stats is not None:
+                        rating_elem = stats.find("rating")
+                        if rating_elem is not None:
+                            rating_value = rating_elem.attrib.get("value")
+                            if not rating_value or rating_value == "N/A":
+                                value_elem = rating_elem.find("value")
+                                if value_elem is not None:
+                                    rating_value = value_elem.attrib.get("value") or value_elem.text
+
+                    if rating_value and rating_value != "N/A":
+                        try:
+                            rating = float(rating_value)
+                            if rating > 0:
+                                page_ratings.append({
+                                    "game_id": int(game_id),
+                                    "game_name": game_name,
+                                    "rating": rating
+                                })
+                        except (ValueError, TypeError):
+                            continue
+
+                all_ratings.extend(page_ratings)
+                print(f"  Page {page}: {len(page_ratings)} rated games fetched")
+                page += 1
+                break  # success, move to next page
+
+            except Exception as e:
+                print(f"  Exception on attempt {attempt}: {e}")
+                if attempt == max_retries - 1:
+                    print("  ❌ Max retries reached, stopping.")
+                    return all_ratings
+
+    return all_ratings
+
+
+
 
 
 def create_ratings_database(db_path: str = "user_ratings.db"):
@@ -318,10 +410,10 @@ def build_ratings_database_from_guild(
 
 
 if __name__ == "__main__":
-    # To process ALL users (will take ~2.5 hours with 2s delay):
+    # To process ALL users (will take ~3.5 hours with 3s delay):
     build_ratings_database_from_guild(
         guild_id=119,
         db_path="greek_user_ratings.db",
-        delay_between_users=2.5,
+        delay_between_users=3,
         max_users=None
     )
