@@ -22,7 +22,7 @@ st.set_page_config(
 )
 
 
-
+st.cache_data.clear()  # clear all cached data on app start (for development purposes)
 
 # ==========================
 # CONSTANTS
