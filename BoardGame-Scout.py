@@ -1168,9 +1168,9 @@ if search_clicked:
 
 
 # ========== USER-BASED COLLABORATIVE FILTERING ==========
-
-@st.cache_data(ttl=36, show_spinner=False)
-def build_user_similarity_matrix() -> pd.DataFrame:
+db_mtime = os.path.getmtime(DB_RATINGS)
+@st.cache_data(show_spinner=False)
+def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
     """
     Offline step: load the ratings table, mean-centre, compute cosine
     similarity between every pair of users that share >= MIN_OVERLAP games.
@@ -1214,7 +1214,7 @@ def build_user_similarity_matrix() -> pd.DataFrame:
 
 
 
-@st.cache_data(ttl=36, show_spinner=False)
+@st.cache_data(show_spinner=False)
 def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     """
     Produce recommendations for a *single* username.
@@ -1225,7 +1225,7 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     import sqlite3, pandas as pd, numpy as np
 
     # 1. load similarity matrix (already cached)
-    sim_df = build_user_similarity_matrix()
+    sim_df = build_user_similarity_matrix(db_mtime)
     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
     if neighbours.empty:
         return pd.DataFrame()   # not enough neighbours
