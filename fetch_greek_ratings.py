@@ -27,11 +27,65 @@ if not BGG_TOKEN:
 
 
 
+# def fetch_guild_members(guild_id: int = 119) -> list[str]:
+#     """
+#     Fetch *all* guild members via the official XML-API2 paginator
+#     with polite rate-limit handling.
+#     """
+#     members: list[str] = []
+#     page = 1
+#     headers = {
+#         "Authorization": f"Bearer {BGG_TOKEN}",
+#         "User-Agent": "BoardGame-Scout/1.0",
+#         "Accept": "application/xml",
+#     }
+
+#     while True:
+#         url = f"https://boardgamegeek.com/xmlapi2/guild?id={guild_id}&members=1&page={page}"
+#         print(f"  requesting page {page} …")
+
+#         # ── request with back-off on 429 ──────────────────────────────────────
+#         for attempt in range(1, 6):                       # max 5 attempts
+#             try:
+#                 r = requests.get(url, headers=headers, timeout=30)
+#                 if r.status_code == 202:                  # still building
+#                     print("    BGG not ready – waiting 5 s")
+#                     time.sleep(5)
+#                     continue
+#                 if r.status_code == 429:                  # rate-limit
+#                     wait = 2 ** attempt                   # 2, 4, 8, 16, 32 s
+#                     print(f"    429 – backing off {wait} s")
+#                     time.sleep(wait)
+#                     continue
+#                 r.raise_for_status()
+#                 break                                     # success
+
+#             except Exception as exc:
+#                 print(f"    error: {exc} – retrying page")
+#                 time.sleep(5)
+#                 continue
+#         else:
+#             print("    too many retries – aborting")
+#             return members
+
+#         # ── parse page --------------------------------------------------------
+#         try:
+#             root = ET.fromstring(r.content)
+#         except ET.ParseError as exc:
+#             print(f"    XML error: {exc} – aborting")
+#             break
+
+#         page_members = [m.attrib["name"] for m in root.findall(".//member") if m.attrib.get("name")]
+#         if not page_members:            # empty page → finished
+#             break
+#         members.extend(page_members)
+
+#         page += 1
+#         time.sleep(3)                   # polite pause between pages
+
+#     print(f"  received {len(members)} unique members")
+#     return members
 def fetch_guild_members(guild_id: int = 119) -> list[str]:
-    """
-    Fetch *all* guild members via the official XML-API2 paginator
-    with polite rate-limit handling.
-    """
     members: list[str] = []
     page = 1
     headers = {
@@ -44,43 +98,54 @@ def fetch_guild_members(guild_id: int = 119) -> list[str]:
         url = f"https://boardgamegeek.com/xmlapi2/guild?id={guild_id}&members=1&page={page}"
         print(f"  requesting page {page} …")
 
-        # ── request with back-off on 429 ──────────────────────────────────────
-        for attempt in range(1, 6):                       # max 5 attempts
+        for attempt in range(1, 6):
             try:
                 r = requests.get(url, headers=headers, timeout=30)
-                if r.status_code == 202:                  # still building
+
+                if r.status_code == 202:
                     print("    BGG not ready – waiting 5 s")
                     time.sleep(5)
                     continue
-                if r.status_code == 429:                  # rate-limit
-                    wait = 2 ** attempt                   # 2, 4, 8, 16, 32 s
+
+                if r.status_code == 429:
+                    wait = 2 ** attempt
                     print(f"    429 – backing off {wait} s")
                     time.sleep(wait)
                     continue
-                r.raise_for_status()
-                break                                     # success
-            except Exception as exc:
-                print(f"    error: {exc} – aborting")
-                return members
-        else:
-            print("    too many retries – aborting")
-            return members
 
-        # ── parse page --------------------------------------------------------
+                r.raise_for_status()
+                break
+
+            except Exception as exc:
+                print(f"    error: {exc} – retrying page")
+                time.sleep(5)
+                continue
+        else:
+            print("    too many retries – skipping page")
+            page += 1
+            continue
+
         try:
             root = ET.fromstring(r.content)
         except ET.ParseError as exc:
-            print(f"    XML error: {exc} – aborting")
+            print(f"    XML error: {exc} – skipping page")
+            page += 1
+            continue
+
+        page_members = [
+            m.attrib["name"]
+            for m in root.findall(".//member")
+            if m.attrib.get("name")
+        ]
+
+        if not page_members:
             break
 
-        page_members = [m.attrib["name"] for m in root.findall(".//member") if m.attrib.get("name")]
-        if not page_members:            # empty page → finished
-            break
         members.extend(page_members)
-
         page += 1
-        time.sleep(3)                   # polite pause between pages
+        time.sleep(3)
 
+    members = list(dict.fromkeys(members))
     print(f"  received {len(members)} unique members")
     return members
 
@@ -190,95 +255,83 @@ def fetch_guild_members(guild_id: int = 119) -> list[str]:
 #             time.sleep(2)
     
 #     return []
-def fetch_user_ratings(username: str, max_retries: int = 10, page_size: int = 100) -> List[Dict]:
+def fetch_user_ratings(username: str, max_retries: int = 6) -> List[Dict]:
     """
-    Fetch all boardgame ratings for a user from BGG, with retries and 202 queue handling.
+    Fetch all rated boardgames for a user from BGG.
+    NOTE: BGG collection API is NOT paginated.
     """
-    all_ratings = []
-    page = 1
+    url = (
+        "https://boardgamegeek.com/xmlapi2/collection"
+        f"?username={username}&rated=1&stats=1&subtype=boardgame"
+    )
 
-    while True:
-        url = (
-            f"https://boardgamegeek.com/xmlapi2/collection"
-            f"?username={username}&rated=1&stats=1&subtype=boardgame&own=1&page={page}"
-        )
-        headers = {
-            "Authorization": f"Bearer {BGG_TOKEN}",
-            "User-Agent": "BoardGame Scout/1.0",
-            "Accept": "application/xml"
-        }
+    headers = {
+        "User-Agent": "BoardGame-Scout/1.0",
+        "Accept": "application/xml",
+    }
 
-        for attempt in range(max_retries):
-            try:
-                if attempt > 0:
-                    wait = 2 ** attempt
-                    print(f"  Retry {attempt} after {wait}s...")
-                    time.sleep(wait)
+    for attempt in range(1, max_retries + 1):
+        try:
+            if attempt > 1:
+                wait = min(30, 2 ** attempt)
+                time.sleep(wait)
 
-                response = requests.get(url, headers=headers, timeout=30)
-                status = response.status_code
+            response = requests.get(url, headers=headers, timeout=30)
 
-                if status == 202:
-                    wait = 3 + attempt  # small backoff
-                    print(f"  BGG queued request, waiting {wait}s...")
-                    time.sleep(wait)
+            if response.status_code == 202:
+                time.sleep(5)
+                continue
+
+            if response.status_code == 429:
+                time.sleep(10)
+                continue
+
+            if response.status_code != 200:
+                return []
+
+            root = ET.fromstring(response.content)
+            items = root.findall("item")
+
+            if not items:
+                return []
+
+            ratings = []
+            for item in items:
+                game_id = item.attrib.get("objectid")
+                name_elem = item.find("name")
+                game_name = name_elem.text if name_elem is not None else "Unknown"
+
+                stats = item.find("stats")
+                if stats is None:
                     continue
-                elif status == 401:
-                    print("  ❌ Unauthorized: check BGG_TOKEN")
-                    return []
-                elif status != 200:
-                    print(f"  Unexpected status {status}")
+
+                rating_elem = stats.find("rating")
+                if rating_elem is None:
                     continue
 
-                # parse XML
-                root = ET.fromstring(response.content)
-                items = root.findall("item")
-                if not items:
-                    print(f"  No more items on page {page}.")
-                    return all_ratings
+                value = rating_elem.attrib.get("value")
+                if not value or value == "N/A":
+                    continue
 
-                page_ratings = []
-                for item in items:
-                    game_id = item.attrib.get("objectid")
-                    name_elem = item.find("name")
-                    game_name = name_elem.text if name_elem is not None else "Unknown"
+                try:
+                    rating = float(value)
+                    if rating > 0:
+                        ratings.append({
+                            "game_id": int(game_id),
+                            "game_name": game_name,
+                            "rating": rating
+                        })
+                except ValueError:
+                    continue
 
-                    # find rating
-                    rating_value = None
-                    stats = item.find("stats")
-                    if stats is not None:
-                        rating_elem = stats.find("rating")
-                        if rating_elem is not None:
-                            rating_value = rating_elem.attrib.get("value")
-                            if not rating_value or rating_value == "N/A":
-                                value_elem = rating_elem.find("value")
-                                if value_elem is not None:
-                                    rating_value = value_elem.attrib.get("value") or value_elem.text
+            return ratings
 
-                    if rating_value and rating_value != "N/A":
-                        try:
-                            rating = float(rating_value)
-                            if rating > 0:
-                                page_ratings.append({
-                                    "game_id": int(game_id),
-                                    "game_name": game_name,
-                                    "rating": rating
-                                })
-                        except (ValueError, TypeError):
-                            continue
+        except Exception:
+            if attempt == max_retries:
+                return []
 
-                all_ratings.extend(page_ratings)
-                print(f"  Page {page}: {len(page_ratings)} rated games fetched")
-                page += 1
-                break  # success, move to next page
+    return []
 
-            except Exception as e:
-                print(f"  Exception on attempt {attempt}: {e}")
-                if attempt == max_retries - 1:
-                    print("  ❌ Max retries reached, stopping.")
-                    return all_ratings
-
-    return all_ratings
 
 
 
