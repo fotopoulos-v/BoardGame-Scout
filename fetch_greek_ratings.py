@@ -266,6 +266,7 @@ def fetch_user_ratings(username: str, max_retries: int = 6) -> List[Dict]:
     )
 
     headers = {
+        "Authorization": f"Bearer {BGG_TOKEN}",
         "User-Agent": "BoardGame-Scout/1.0",
         "Accept": "application/xml",
     }
