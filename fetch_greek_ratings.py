@@ -264,7 +264,6 @@ def fetch_user_ratings(username: str, max_retries: int = 6) -> List[Dict]:
         "https://boardgamegeek.com/xmlapi2/collection"
         f"?username={username}&rated=1&stats=1&subtype=boardgame"
     )
-
     headers = {
         "Authorization": f"Bearer {BGG_TOKEN}",
         "User-Agent": "BoardGame-Scout/1.0",
