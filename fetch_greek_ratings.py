@@ -273,13 +273,13 @@ def fetch_user_ratings(username: str, max_retries: int = 6) -> List[Dict]:
     for attempt in range(1, max_retries + 1):
         try:
             if attempt > 1:
-                wait = min(30, 2 ** attempt)
+                wait = min(10, 2 ** attempt)
                 time.sleep(wait)
 
             response = requests.get(url, headers=headers, timeout=30)
 
             if response.status_code == 202:
-                time.sleep(5)
+                time.sleep(2)
                 continue
 
             if response.status_code == 429:
