@@ -105,6 +105,7 @@ def fetch_user_ratings(username: str, max_retries: int = 4) -> Tuple[List[Dict],
         f"?username={username}&rated=1&stats=1&subtype=boardgame"
     )
     headers = {
+        "Authorization": f"Bearer {BGG_TOKEN}",
         "User-Agent": "BoardGame-Scout/1.0",
         "Accept": "application/xml",
     }
