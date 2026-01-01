@@ -106,11 +106,11 @@ def fetch_user_ratings(username: str, max_retries: int = 5) -> Tuple[List[Dict],
         "https://boardgamegeek.com/xmlapi2/collection"
         f"?username={username}&rated=1&stats=1&subtype=boardgame"
     )
-    headers = {
-        "User-Agent": "BoardGame-Scout/1.0",
-        "Accept": "application/xml",
-    }
-    # headers = {"Authorization": f"Bearer {st.secrets.get('BGG_TOKEN', '')}"}
+    # headers = {
+    #     "User-Agent": "BoardGame-Scout/1.0",
+    #     "Accept": "application/xml",
+    # }
+    headers = {"Authorization": f"Bearer {st.secrets.get('BGG_TOKEN', '')}"}
     # NO Authorization header - collection API is public!
     
     for attempt in range(1, max_retries + 1):
