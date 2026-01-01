@@ -1,388 +1,485 @@
 """
-BGG Guild Members Fetcher and Ratings Database Builder
-Fetches all members from a BGG guild and their ratings in parallel
-NOTE: Requires BGG_TOKEN environment variable (only for guild member fetch)
+BGG Guild Members Fetcher
+Fetches all members from a BGG guild and optionally their ratings
+
+NOTE: Requires BGG_TOKEN in .streamlit/secrets.toml
 """
+
 import requests
 import xml.etree.ElementTree as ET
-import time
 import sqlite3
+import time
 import os
-import json
-import threading
-from typing import List, Dict, Tuple
-from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from typing import List, Dict
+import toml
+
+
 
 BGG_TOKEN = os.getenv("BGG_TOKEN")
+
 if not BGG_TOKEN:
     raise RuntimeError(
         "BGG_TOKEN environment variable not set. "
         "Set it before running the script."
     )
 
-CHECKPOINT_FILE = "greek_ratings_checkpoint.json"
-db_lock = threading.Lock()  # Thread-safe database writes
 
 
-def fetch_guild_members(guild_id: int = 119) -> List[str]:
-    """Fetch all members from a BGG guild, removing duplicates."""
-    members: List[str] = []
+
+
+# def fetch_guild_members(guild_id: int = 119) -> list[str]:
+#     """
+#     Fetch *all* guild members via the official XML-API2 paginator
+#     with polite rate-limit handling.
+#     """
+#     members: list[str] = []
+#     page = 1
+#     headers = {
+#         "Authorization": f"Bearer {BGG_TOKEN}",
+#         "User-Agent": "BoardGame-Scout/1.0",
+#         "Accept": "application/xml",
+#     }
+
+#     while True:
+#         url = f"https://boardgamegeek.com/xmlapi2/guild?id={guild_id}&members=1&page={page}"
+#         print(f"  requesting page {page} …")
+
+#         # ── request with back-off on 429 ──────────────────────────────────────
+#         for attempt in range(1, 6):                       # max 5 attempts
+#             try:
+#                 r = requests.get(url, headers=headers, timeout=30)
+#                 if r.status_code == 202:                  # still building
+#                     print("    BGG not ready – waiting 5 s")
+#                     time.sleep(5)
+#                     continue
+#                 if r.status_code == 429:                  # rate-limit
+#                     wait = 2 ** attempt                   # 2, 4, 8, 16, 32 s
+#                     print(f"    429 – backing off {wait} s")
+#                     time.sleep(wait)
+#                     continue
+#                 r.raise_for_status()
+#                 break                                     # success
+
+#             except Exception as exc:
+#                 print(f"    error: {exc} – retrying page")
+#                 time.sleep(5)
+#                 continue
+#         else:
+#             print("    too many retries – aborting")
+#             return members
+
+#         # ── parse page --------------------------------------------------------
+#         try:
+#             root = ET.fromstring(r.content)
+#         except ET.ParseError as exc:
+#             print(f"    XML error: {exc} – aborting")
+#             break
+
+#         page_members = [m.attrib["name"] for m in root.findall(".//member") if m.attrib.get("name")]
+#         if not page_members:            # empty page → finished
+#             break
+#         members.extend(page_members)
+
+#         page += 1
+#         time.sleep(3)                   # polite pause between pages
+
+#     print(f"  received {len(members)} unique members")
+#     return members
+def fetch_guild_members(guild_id: int = 119) -> list[str]:
+    members: list[str] = []
     page = 1
     headers = {
         "Authorization": f"Bearer {BGG_TOKEN}",
         "User-Agent": "BoardGame-Scout/1.0",
         "Accept": "application/xml",
     }
-    
-    print(f"Fetching members from guild {guild_id}...")
-    
+
     while True:
         url = f"https://boardgamegeek.com/xmlapi2/guild?id={guild_id}&members=1&page={page}"
-        print(f"  Requesting page {page}...")
-        
+        print(f"  requesting page {page} …")
+
         for attempt in range(1, 6):
             try:
                 r = requests.get(url, headers=headers, timeout=30)
-                
+
                 if r.status_code == 202:
-                    print("    BGG not ready – waiting 5s")
+                    print("    BGG not ready – waiting 5 s")
                     time.sleep(5)
                     continue
-                
+
                 if r.status_code == 429:
                     wait = 2 ** attempt
-                    print(f"    429 – backing off {wait}s")
+                    print(f"    429 – backing off {wait} s")
                     time.sleep(wait)
                     continue
-                
+
                 r.raise_for_status()
                 break
-                
+
             except Exception as exc:
-                print(f"    Error: {exc} – retrying page")
+                print(f"    error: {exc} – retrying page")
                 time.sleep(5)
                 continue
         else:
-            print("    Too many retries – skipping page")
+            print("    too many retries – skipping page")
             page += 1
             continue
-        
+
         try:
             root = ET.fromstring(r.content)
         except ET.ParseError as exc:
             print(f"    XML error: {exc} – skipping page")
             page += 1
             continue
-        
+
         page_members = [
             m.attrib["name"]
             for m in root.findall(".//member")
             if m.attrib.get("name")
         ]
-        
+
         if not page_members:
             break
-        
+
         members.extend(page_members)
-        print(f"    Found {len(page_members)} members on this page")
         page += 1
         time.sleep(3)
-    
-    # Remove duplicates while preserving order
-    original_count = len(members)
+
     members = list(dict.fromkeys(members))
-    
-    if original_count != len(members):
-        print(f"⚠️  Removed {original_count - len(members)} duplicate usernames")
-    
-    print(f"\n✅ Total unique members: {len(members)}\n")
+    print(f"  received {len(members)} unique members")
     return members
 
 
-def fetch_user_ratings(username: str, max_retries: int = 6) -> Tuple[List[Dict], float]:
+
+
+
+
+
+
+
+
+# 1 ---------------------------------------------------------------------------------------------
+def fetch_user_ratings(username: str, max_retries: int = 8) -> List[Dict]:
     """
-    Fetch all rated boardgames for a user from BGG.
-    Returns: (ratings_list, elapsed_time_seconds)
-    """
-    start_time = time.time()
+    Fetch all game ratings from a user.
     
-    url = (
-        "https://boardgamegeek.com/xmlapi2/collection"
-        f"?username={username}&rated=1&stats=1&subtype=boardgame"
-    )
+    Args:
+        username: BGG username
+        max_retries: Number of retry attempts
+    
+    Returns:
+        List of dicts with game_id, rating, game_name
+    """
+    url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
+    
     headers = {
-        "User-Agent": "BoardGame-Scout/1.0",
-        "Accept": "application/xml",
+        "Authorization": f"Bearer {BGG_TOKEN}",
+        "User-Agent": "BoardGame Scout/1.0",
+        "Accept": "application/xml"
     }
-    # NO Authorization header - collection API is public!
     
-    for attempt in range(1, max_retries + 1):
+    for attempt in range(max_retries):
         try:
-            if attempt > 1:
-                wait = min(20, 3 ** (attempt - 1))  # 1s, 3s, 9s, 20s, 20s, 20s
-                time.sleep(wait)
+            # Add small delay before first request
+            if attempt == 0:
+                time.sleep(1)
             
-            response = requests.get(url, headers=headers, timeout=30)
+            response = requests.get(url, headers=headers, timeout=25)
             
             if response.status_code == 202:
-                # BGG is processing - wait longer
-                time.sleep(8)
+                # BGG is queuing the request
+                print(f"  Collection queued, waiting...")
+                time.sleep(3)
                 continue
+            
+            if response.status_code == 401:
+                print(f"  ❌ Unauthorized - check BGG token")
+                return []
             
             if response.status_code == 429:
-                # Rate limited - back off significantly
-                time.sleep(20)
+                wait = 2 * max_retries
+                print(f"    429 – backing off {wait} s")
+                time.sleep(wait)
                 continue
             
-            if response.status_code == 400:
-                # Bad request - user might not exist or have no collection
-                elapsed = time.time() - start_time
-                return [], elapsed
-            
             if response.status_code != 200:
-                elapsed = time.time() - start_time
-                return [], elapsed
+                return []
             
             root = ET.fromstring(response.content)
-            items = root.findall("item")
             
+            # Check if collection is empty
+            items = root.findall("item")
             if not items:
-                elapsed = time.time() - start_time
-                return [], elapsed
+                return []
             
             ratings = []
             for item in items:
                 game_id = item.attrib.get("objectid")
+                
+                # Get game name
                 name_elem = item.find("name")
                 game_name = name_elem.text if name_elem is not None else "Unknown"
                 
+                # Get rating - check multiple possible locations
+                rating_value = None
+                
+                # Method 1: stats/rating element
                 stats = item.find("stats")
-                if stats is None:
-                    continue
+                if stats is not None:
+                    rating_elem = stats.find("rating")
+                    if rating_elem is not None:
+                        # Check rating attribute
+                        rating_value = rating_elem.attrib.get("value")
+                        
+                        # Check value child element
+                        if not rating_value or rating_value == "N/A":
+                            value_elem = rating_elem.find("value")
+                            if value_elem is not None:
+                                rating_value = value_elem.attrib.get("value")
+                                if not rating_value:
+                                    rating_value = value_elem.text
                 
-                rating_elem = stats.find("rating")
-                if rating_elem is None:
-                    continue
-                
-                value = rating_elem.attrib.get("value")
-                if not value or value == "N/A":
-                    continue
-                
-                try:
-                    rating = float(value)
-                    if rating > 0:
-                        ratings.append({
-                            "game_id": int(game_id),
-                            "game_name": game_name,
-                            "rating": rating
-                        })
-                except ValueError:
-                    continue
+                # Try to convert to float
+                if rating_value and rating_value != "N/A":
+                    try:
+                        rating = float(rating_value)
+                        if rating > 0:  # Only include actual ratings (not 0)
+                            ratings.append({
+                                "game_id": int(game_id),
+                                "game_name": game_name,
+                                "rating": rating
+                            })
+                    except (ValueError, TypeError):
+                        continue
             
-            elapsed = time.time() - start_time
-            return ratings, elapsed
-            
-        except requests.exceptions.Timeout:
-            if attempt == max_retries:
-                elapsed = time.time() - start_time
-                return [], elapsed
-            time.sleep(10)
-            
+            return ratings
+        
         except Exception as e:
-            if attempt == max_retries:
-                elapsed = time.time() - start_time
-                return [], elapsed
+            if attempt == max_retries - 1:
+                print(f"  Error fetching ratings: {e}")
+                return []
+            time.sleep(2)
     
-    elapsed = time.time() - start_time
-    return [], elapsed
+    return []
 
 
-def process_single_user(username: str, user_idx: int, total_users: int) -> Tuple[str, List[Dict], float, int]:
-    """
-    Process a single user and return results.
-    Returns: (username, ratings, elapsed_time, user_index)
-    """
-    ratings, elapsed = fetch_user_ratings(username)
-    return username, ratings, elapsed, user_idx
+
+## 2 --------------------------------------------------------------------------------
+# def fetch_user_ratings(username: str, max_retries: int = 6) -> List[Dict]:
+#     """
+#     Fetch all rated boardgames for a user from BGG.
+#     NOTE: BGG collection API is NOT paginated.
+#     """
+#     url = (
+#         "https://boardgamegeek.com/xmlapi2/collection"
+#         f"?username={username}&rated=1&stats=1&subtype=boardgame"
+#     )
+#     headers = {
+#         "Authorization": f"Bearer {BGG_TOKEN}",
+#         "User-Agent": "BoardGame-Scout/1.0",
+#         "Accept": "application/xml",
+#     }
+
+#     for attempt in range(1, max_retries + 1):
+#         try:
+#             if attempt > 1:
+#                 wait = min(10, 2 ** attempt)
+#                 time.sleep(wait)
+
+#             response = requests.get(url, headers=headers, timeout=30)
+
+#             if response.status_code == 202:
+#                 time.sleep(2)
+#                 continue
+
+#             if response.status_code == 429:
+#                 time.sleep(5)
+#                 continue
+
+#             if response.status_code != 200:
+#                 return []
+
+#             root = ET.fromstring(response.content)
+#             items = root.findall("item")
+
+#             if not items:
+#                 return []
+
+#             ratings = []
+#             for item in items:
+#                 game_id = item.attrib.get("objectid")
+#                 name_elem = item.find("name")
+#                 game_name = name_elem.text if name_elem is not None else "Unknown"
+
+#                 stats = item.find("stats")
+#                 if stats is None:
+#                     continue
+
+#                 rating_elem = stats.find("rating")
+#                 if rating_elem is None:
+#                     continue
+
+#                 value = rating_elem.attrib.get("value")
+#                 if not value or value == "N/A":
+#                     continue
+
+#                 try:
+#                     rating = float(value)
+#                     if rating > 0:
+#                         ratings.append({
+#                             "game_id": int(game_id),
+#                             "game_name": game_name,
+#                             "rating": rating
+#                         })
+#                 except ValueError:
+#                     continue
+
+#             return ratings
+
+#         except Exception:
+#             if attempt == max_retries:
+#                 return []
+
+#     return []
 
 
-def load_checkpoint() -> set:
-    """Load previously processed users from checkpoint file."""
-    if os.path.exists(CHECKPOINT_FILE):
-        try:
-            with open(CHECKPOINT_FILE, 'r') as f:
-                data = json.load(f)
-                return set(data.get('processed', []))
-        except:
-            return set()
-    return set()
 
 
-def save_checkpoint(processed_users: set):
-    """Save checkpoint of processed users."""
-    with open(CHECKPOINT_FILE, 'w') as f:
-        json.dump({
-            'processed': list(processed_users),
-            'timestamp': datetime.now().isoformat()
-        }, f)
+# --------------------------------------------------------------------------------------------------------------
 
 
-def save_ratings_to_db(username: str, ratings: List[Dict], db_path: str):
-    """Save ratings to SQLite database with thread safety."""
+
+
+def create_ratings_database(db_path: str = "user_ratings.db"):
+    """Create SQLite database for user ratings."""
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    
+    # Create tables
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS users (
+            username TEXT PRIMARY KEY,
+            ratings_count INTEGER DEFAULT 0,
+            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS ratings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            username TEXT,
+            game_id INTEGER,
+            game_name TEXT,
+            rating REAL,
+            FOREIGN KEY (username) REFERENCES users(username),
+            UNIQUE(username, game_id)
+        )
+    """)
+    
+    # Create indices for faster queries
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_game_id ON ratings(game_id)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_username ON ratings(username)")
+    cur.execute("CREATE INDEX IF NOT EXISTS idx_rating ON ratings(rating)")
+    
+    conn.commit()
+    conn.close()
+    print(f"Database created: {db_path}")
+
+
+def save_user_ratings(username: str, ratings: List[Dict], db_path: str = "user_ratings.db"):
+    """Save user ratings to database."""
     if not ratings:
         return
     
-    # Use lock to prevent concurrent writes
-    with db_lock:
-        conn = sqlite3.connect(db_path, timeout=30.0)
-        cursor = conn.cursor()
+    conn = sqlite3.connect(db_path)
+    cur = conn.cursor()
+    
+    try:
+        # Insert/update user
+        cur.execute("""
+            INSERT OR REPLACE INTO users (username, ratings_count, last_updated)
+            VALUES (?, ?, CURRENT_TIMESTAMP)
+        """, (username, len(ratings)))
         
-        try:
-            # Create table if not exists (changed from user_ratings to ratings)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS ratings (
-                    username TEXT,
-                    game_id INTEGER,
-                    game_name TEXT,
-                    rating REAL,
-                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    PRIMARY KEY (username, game_id)
-                )
-            """)
-            
-            # Delete existing ratings for this user (prevents duplicates)
-            cursor.execute("DELETE FROM ratings WHERE username = ?", (username,))
-            
-            # Insert new ratings
-            for rating_data in ratings:
-                cursor.execute("""
-                    INSERT INTO ratings (username, game_id, game_name, rating)
-                    VALUES (?, ?, ?, ?)
-                """, (username, rating_data['game_id'], rating_data['game_name'], rating_data['rating']))
-            
-            conn.commit()
-        except Exception as e:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+        # Insert ratings
+        for r in ratings:
+            cur.execute("""
+                INSERT OR REPLACE INTO ratings (username, game_id, game_name, rating)
+                VALUES (?, ?, ?, ?)
+            """, (username, r["game_id"], r["game_name"], r["rating"]))
+        
+        conn.commit()
+    except Exception as e:
+        print(f"Error saving ratings for {username}: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
 
 
-def fetch_all_greek_ratings_parallel(
-    greek_users: List[str],
-    db_path: str,
-    max_workers: int = 5,
-    checkpoint_interval: int = 50,
-    batch_delay: float = 3.0
+def build_ratings_database_from_guild(
+    guild_id: int = 119,
+    db_path: str = "user_ratings.db",
+    delay_between_users: float = 2.0,
+    max_users: int = None
 ):
     """
-    Fetch ratings for all Greek users in parallel with checkpoint support.
+    Main function to build ratings database from guild members.
     
     Args:
-        greek_users: List of BGG usernames
+        guild_id: BGG guild ID
         db_path: Path to SQLite database
-        max_workers: Number of parallel workers (default 5)
-        checkpoint_interval: Save checkpoint every N users (default 50)
-        batch_delay: Seconds to wait after each batch completes (default 3.0)
+        delay_between_users: Seconds to wait between API calls (be nice to BGG!)
+        max_users: Limit number of users to process (None = all)
     """
+    print("="*60)
+    print("BGG User Ratings Database Builder")
+    print("="*60)
     
-    # Load checkpoint
-    processed = load_checkpoint()
-    remaining = [u for u in greek_users if u not in processed]
+    # Step 1: Create database
+    create_ratings_database(db_path)
     
-    total_users = len(greek_users)
-    already_processed = len(processed)
+    # Step 2: Fetch guild members
+    members = fetch_guild_members(guild_id)
     
-    print(f"\n{'='*70}")
-    print(f"🚀 Starting parallel fetch with {max_workers} workers")
-    print(f"📊 Total users: {total_users}")
-    print(f"✓ Already processed: {already_processed}")
-    print(f"⏳ Remaining: {len(remaining)}")
-    print(f"⏱️  Batch delay: {batch_delay}s between batches")
-    print(f"{'='*70}\n")
-    
-    if not remaining:
-        print("✅ All users already processed!")
+    if not members:
+        print("No members found!")
         return
     
-    start_time = time.time()
+    if max_users:
+        members = members[:max_users]
+        print(f"Processing first {max_users} members...")
+    
+    # Step 3: Fetch ratings for each member
+    total = len(members)
     successful = 0
-    failed = 0
-    total_ratings = 0
-    batch_count = 0
     
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit all tasks
-        futures = {
-            executor.submit(process_single_user, user, already_processed + idx, total_users): user
-            for idx, user in enumerate(remaining, 1)
-        }
+    for i, username in enumerate(members, 1):
+        print(f"\n[{i}/{total}] Processing: {username}")
         
-        # Process completed tasks as they finish
-        for future in as_completed(futures):
-            username = futures[future]
-            
-            try:
-                username, ratings, elapsed, user_idx = future.result()
-                
-                # Print progress with timing
-                print(f"[{user_idx}/{total_users}] {username:20s} | {elapsed:5.1f}s", end="")
-                
-                if ratings:
-                    save_ratings_to_db(username, ratings, db_path)
-                    print(f" | ✓ {len(ratings):3d} ratings")
-                    successful += 1
-                    total_ratings += len(ratings)
-                else:
-                    print(f" | ✗ No ratings")
-                    failed += 1
-                
-                processed.add(username)
-                batch_count += 1
-                
-                # Add delay every max_workers completions (one "batch")
-                if batch_count % max_workers == 0:
-                    time.sleep(batch_delay)
-                
-                # Save checkpoint periodically
-                if len(processed) % checkpoint_interval == 0:
-                    save_checkpoint(processed)
-                    elapsed_total = time.time() - start_time
-                    rate = len(processed) / elapsed_total * 60
-                    print(f"\n💾 Checkpoint: {len(processed)}/{total_users} users | {rate:.1f} users/min\n")
-            
-            except Exception as e:
-                print(f"[ERROR] {username}: {str(e)[:50]}")
-                failed += 1
-                processed.add(username)  # Mark as processed even if failed to avoid retry loops
+        ratings = fetch_user_ratings(username)
+        
+        if ratings:
+            save_user_ratings(username, ratings, db_path)
+            successful += 1
+            print(f"  ✓ Saved {len(ratings)} ratings")
+        else:
+            print(f"  ✗ No ratings found")
+        
+        # Be nice to BGG servers
+        if i < total:
+            time.sleep(delay_between_users)
     
-    # Final checkpoint save
-    save_checkpoint(processed)
-    
-    # Summary
-    elapsed_total = time.time() - start_time
-    print(f"\n{'='*70}")
-    print(f"✅ Parallel fetch complete!")
-    print(f"⏱️  Total time: {elapsed_total/60:.1f} minutes ({elapsed_total:.0f} seconds)")
-    print(f"✓ Successful: {successful} users")
-    print(f"✗ Failed: {failed} users")
-    print(f"📊 Total ratings collected: {total_ratings}")
-    if (successful + failed) > 0:
-        print(f"📈 Success rate: {successful/(successful+failed)*100:.1f}%")
-        print(f"⚡ Average rate: {(successful + failed) / elapsed_total * 60:.1f} users/minute")
-    print(f"{'='*70}\n")
+    print("\n" + "="*60)
+    print(f"COMPLETE! Processed {successful}/{total} users")
+    print(f"Database saved: {db_path}")
+    print("="*60)
 
 
 if __name__ == "__main__":
-    # Step 1: Fetch guild members
-    greek_users = fetch_guild_members(guild_id=119)
-    
-    # Step 2: Fetch ratings in parallel with conservative settings
-    fetch_all_greek_ratings_parallel(
-        greek_users=greek_users,
+    # To process ALL users (will take ~3.5 hours with 3s delay):
+    build_ratings_database_from_guild(
+        guild_id=119,
         db_path="greek_user_ratings.db",
-        max_workers=5,          # Conservative: 5 parallel workers
-        checkpoint_interval=50,  # Save progress every 50 users
-        batch_delay=3.0         # Wait 3 seconds between batches
+        delay_between_users=3,
+        max_users=None
     )
