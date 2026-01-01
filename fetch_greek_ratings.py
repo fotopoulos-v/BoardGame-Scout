@@ -1,7 +1,7 @@
 """
 BGG Guild Members Fetcher and Ratings Database Builder
 Fetches all members from a BGG guild and their ratings in parallel
-NOTE: Requires BGG_TOKEN environment variable
+NOTE: Requires BGG_TOKEN environment variable (only for guild member fetch)
 """
 import requests
 import xml.etree.ElementTree as ET
@@ -9,6 +9,7 @@ import time
 import sqlite3
 import os
 import json
+import threading
 from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
@@ -21,6 +22,7 @@ if not BGG_TOKEN:
     )
 
 CHECKPOINT_FILE = "greek_ratings_checkpoint.json"
+db_lock = threading.Lock()  # Thread-safe database writes
 
 
 def fetch_guild_members(guild_id: int = 119) -> List[str]:
@@ -93,7 +95,7 @@ def fetch_guild_members(guild_id: int = 119) -> List[str]:
     return members
 
 
-def fetch_user_ratings(username: str, max_retries: int = 4) -> Tuple[List[Dict], float]:
+def fetch_user_ratings(username: str, max_retries: int = 5) -> Tuple[List[Dict], float]:
     """
     Fetch all rated boardgames for a user from BGG.
     Returns: (ratings_list, elapsed_time_seconds)
@@ -105,26 +107,31 @@ def fetch_user_ratings(username: str, max_retries: int = 4) -> Tuple[List[Dict],
         f"?username={username}&rated=1&stats=1&subtype=boardgame"
     )
     headers = {
-        "Authorization": f"Bearer {BGG_TOKEN}",
         "User-Agent": "BoardGame-Scout/1.0",
         "Accept": "application/xml",
     }
+    # headers = {"Authorization": f"Bearer {st.secrets.get('BGG_TOKEN', '')}"}
+    # NO Authorization header - collection API is public!
     
     for attempt in range(1, max_retries + 1):
         try:
             if attempt > 1:
-                wait = min(10, 2 ** (attempt - 1))  # 1s, 2s, 4s, 8s, 10s
+                wait = min(15, 3 ** (attempt - 1))
                 time.sleep(wait)
             
-            response = requests.get(url, headers=headers, timeout=20)
+            response = requests.get(url, headers=headers, timeout=25)
             
             if response.status_code == 202:
-                time.sleep(2)
+                time.sleep(5)
                 continue
             
             if response.status_code == 429:
-                time.sleep(5)
+                time.sleep(15)
                 continue
+            
+            if response.status_code == 400:
+                elapsed = time.time() - start_time
+                return [], elapsed
             
             if response.status_code != 200:
                 elapsed = time.time() - start_time
@@ -169,6 +176,12 @@ def fetch_user_ratings(username: str, max_retries: int = 4) -> Tuple[List[Dict],
             elapsed = time.time() - start_time
             return ratings, elapsed
             
+        except requests.exceptions.Timeout:
+            if attempt == max_retries:
+                elapsed = time.time() - start_time
+                return [], elapsed
+            time.sleep(10)
+            
         except Exception as e:
             if attempt == max_retries:
                 elapsed = time.time() - start_time
@@ -209,43 +222,50 @@ def save_checkpoint(processed_users: set):
 
 
 def save_ratings_to_db(username: str, ratings: List[Dict], db_path: str):
-    """Save ratings to SQLite database."""
+    """Save ratings to SQLite database with thread safety."""
     if not ratings:
         return
     
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
-    
-    # Create table if not exists
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS user_ratings (
-            username TEXT,
-            game_id INTEGER,
-            game_name TEXT,
-            rating REAL,
-            last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            PRIMARY KEY (username, game_id)
-        )
-    """)
-    
-    # Delete existing ratings for this user
-    cursor.execute("DELETE FROM user_ratings WHERE username = ?", (username,))
-    
-    # Insert new ratings
-    for rating_data in ratings:
-        cursor.execute("""
-            INSERT INTO user_ratings (username, game_id, game_name, rating)
-            VALUES (?, ?, ?, ?)
-        """, (username, rating_data['game_id'], rating_data['game_name'], rating_data['rating']))
-    
-    conn.commit()
-    conn.close()
+    # Use lock to prevent concurrent writes
+    with db_lock:
+        conn = sqlite3.connect(db_path, timeout=30.0)
+        cursor = conn.cursor()
+        
+        try:
+            # Create table if not exists
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS user_ratings (
+                    username TEXT,
+                    game_id INTEGER,
+                    game_name TEXT,
+                    rating REAL,
+                    last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    PRIMARY KEY (username, game_id)
+                )
+            """)
+            
+            # Delete existing ratings for this user
+            cursor.execute("DELETE FROM user_ratings WHERE username = ?", (username,))
+            
+            # Insert new ratings
+            for rating_data in ratings:
+                cursor.execute("""
+                    INSERT INTO user_ratings (username, game_id, game_name, rating)
+                    VALUES (?, ?, ?, ?)
+                """, (username, rating_data['game_id'], rating_data['game_name'], rating_data['rating']))
+            
+            conn.commit()
+        except Exception as e:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
 
 
 def fetch_all_greek_ratings_parallel(
     greek_users: List[str],
     db_path: str,
-    max_workers: int = 20,
+    max_workers: int = 10,  # Reduced from 20
     checkpoint_interval: int = 50
 ):
     """
@@ -254,7 +274,7 @@ def fetch_all_greek_ratings_parallel(
     Args:
         greek_users: List of BGG usernames
         db_path: Path to SQLite database
-        max_workers: Number of parallel workers (default 20)
+        max_workers: Number of parallel workers (default 10)
         checkpoint_interval: Save checkpoint every N users (default 50)
     """
     
@@ -339,10 +359,10 @@ if __name__ == "__main__":
     # Step 1: Fetch guild members
     greek_users = fetch_guild_members(guild_id=119)
     
-    # Step 2: Fetch ratings in parallel
+    # Step 2: Fetch ratings in parallel (reduced to 10 workers)
     fetch_all_greek_ratings_parallel(
         greek_users=greek_users,
         db_path="greek_user_ratings.db",
-        max_workers=20,
+        max_workers=10,  # Reduced from 20
         checkpoint_interval=50
     )
