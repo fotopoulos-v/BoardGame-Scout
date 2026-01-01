@@ -13,7 +13,6 @@ import threading
 from typing import List, Dict, Tuple
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
-import streamlit as st
 
 BGG_TOKEN = os.getenv("BGG_TOKEN")
 if not BGG_TOKEN:
@@ -111,7 +110,11 @@ def fetch_user_ratings(username: str, max_retries: int = 5) -> Tuple[List[Dict],
     #     "User-Agent": "BoardGame-Scout/1.0",
     #     "Accept": "application/xml",
     # }
-    headers = {"Authorization": f"Bearer {st.secrets.get('BGG_TOKEN', '')}"}
+    headers = {
+        "Authorization": f"Bearer {BGG_TOKEN}",
+        "User-Agent": "BoardGame Scout/1.0",
+        "Accept": "application/xml"
+    }
     # NO Authorization header - collection API is public!
     
     for attempt in range(1, max_retries + 1):
