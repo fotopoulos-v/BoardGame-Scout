@@ -4,6 +4,8 @@ import time
 import sqlite3
 from typing import List, Dict
 from datetime import datetime
+import os
+import toml
 
 BGG_TOKEN = os.getenv("BGG_TOKEN")
 
