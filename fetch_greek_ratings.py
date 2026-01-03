@@ -396,7 +396,7 @@ if __name__ == "__main__":
     print(f"✅ Run Complete!")
     print(f"⏱️  Time: {elapsed/60:.1f} minutes ({elapsed:.0f} seconds)")
     print(f"✓ Successful: {successful}")
-    print(f"✗ Failed: {failed}")
+    print(f"✗ No ratings: {failed}")
     print(f"\n📊 Updated Database Stats:")
     print(f"   Total users: {final_stats['total_users']}")
     print(f"   Updated: {final_stats['updated_users']}")
