@@ -141,8 +141,8 @@ def save_ratings_to_db(username: str, ratings: List[Dict], db_path: str):
     
     for rating_data in ratings:
         cursor.execute("""
-            INSERT INTO ratings (username, game_id, game_name, rating)
-            VALUES (?, ?, ?, ?)
+            INSERT OR REPLACE INTO ratings (username, game_id, game_name, rating, last_updated)
+            VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
         """, (username, rating_data['game_id'], rating_data['game_name'], rating_data['rating']))
     
     conn.commit()
