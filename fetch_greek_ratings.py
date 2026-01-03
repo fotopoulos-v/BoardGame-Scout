@@ -244,13 +244,13 @@ def save_ratings_to_db(username: str, ratings: List[Dict], db_path: str):
     try:
         current_time = datetime.now().isoformat()
         
-        # Delete existing ratings for this user
+        # Delete existing ratings for this user first
         cursor.execute("DELETE FROM ratings WHERE username = ?", (username,))
         
         # Insert new ratings with current timestamp
         for rating_data in ratings:
             cursor.execute("""
-                INSERT INTO ratings (username, game_id, game_name, rating, date_updated)
+                INSERT OR REPLACE INTO ratings (username, game_id, game_name, rating, date_updated)
                 VALUES (?, ?, ?, ?, ?)
             """, (username, rating_data['game_id'], rating_data['game_name'], 
                   rating_data['rating'], current_time))
@@ -265,7 +265,7 @@ def save_ratings_to_db(username: str, ratings: List[Dict], db_path: str):
     except Exception as e:
         conn.rollback()
         print(f"  DB Error: {e}")
-        raise
+        # Don't raise - just continue
     finally:
         conn.close()
 
