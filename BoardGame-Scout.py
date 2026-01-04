@@ -1284,7 +1284,7 @@ st.markdown("""
     div.stElementContainer.st-key-rec_btn div.stButton > button:focus,
     div.stElementContainer.st-key-rec_btn button:active,
     div.stElementContainer.st-key-rec_btn button:focus {
-        background-color: #4F1022 !important;   /* your favourite purple */
+        background-color: #F53D18 !important;   /* your favourite purple 4F1022*/
         color: white !important;
         width  : 190px !important;              /* make it wider */
         margin-left: 24px !important;   /* push it to the right */
