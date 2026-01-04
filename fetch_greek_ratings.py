@@ -364,17 +364,17 @@ if __name__ == "__main__":
     failed = 0
     
     for i, username in enumerate(users_to_update, 1):
-        print(f"[{i}/{len(users_to_update)}] Processing: {username} (delay: {current_delay:.1f}s)", end="")
+        print(f"[{i}/{len(users_to_update)}] Processing: {username} (delay: {current_delay:.1f}s)", end="", flush=True)
         
         ratings = fetch_user_ratings(username)
         
         if ratings:
             save_ratings_to_db(username, ratings, db_path)
-            print(f" ✓ {len(ratings)} ratings")
+            print(f" ✓ {len(ratings)} ratings", flush=True)
             successful += 1
         else:
             mark_user_updated_no_ratings(username, db_path)
-            print(f" ✗ No ratings")
+            print(f" ✗ No ratings", flush=True)
             failed += 1
         
         # Adaptive delay
