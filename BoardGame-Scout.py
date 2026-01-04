@@ -37,7 +37,7 @@ MIN_OVERLAP = 5                        # at least 5 co-rated games to trust simi
 NEIGHBOURS  = 25                       # top-k Greek users whose taste we trust
 RECOMMEND_COUNT = 20                   # how many titles to show in the UI
 
-RATINGS_REFRESH_INTERVAL = 3 * 24 * 60 * 60  # 3 days
+RATINGS_REFRESH_INTERVAL = 24 #* 60 * 60  # 1 day
 RATINGS_DB_URL = (
     "https://github.com/"
     "fotopoulos-v/BoardGame-Scout/"
