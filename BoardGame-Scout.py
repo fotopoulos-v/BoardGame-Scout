@@ -1307,7 +1307,7 @@ st.markdown("""
 if st.session_state.get("show_user_section", False):
     st.subheader("🎮 Retrieve Your BGG Collection")
     
-    col_username, col_list, col_reveal, col_rec = st.columns([2, 1.5, 1.6, 2], gap='small')
+    col_username, col_list, col_reveal, col_rec = st.columns([2, 1.5, 1.6, 1.9], gap='small')
 
     with col_username:
         username = st.text_input("Enter your BoardGameGeek username:", label_visibility="collapsed", placeholder="BGG username")
