@@ -1284,7 +1284,7 @@ st.markdown("""
     div.stElementContainer.st-key-rec_btn div.stButton > button:focus,
     div.stElementContainer.st-key-rec_btn button:active,
     div.stElementContainer.st-key-rec_btn button:focus {
-        background-color: #F53D18 !important;   /* your favourite purple 4F1022*/
+        background-color: #4F1022 !important;   /* your favourite purple */
         color: white !important;
         width  : 190px !important;              /* make it wider */
         height : 38px !important;
@@ -1307,7 +1307,7 @@ st.markdown("""
 if st.session_state.get("show_user_section", False):
     st.subheader("🎮 Retrieve Your BGG Collection")
     
-    col_username, col_list, col_reveal, col_rec = st.columns([1, 1.5, 1.8, 1.6], gap='small')
+    col_username, col_list, col_reveal, col_rec = st.columns([1, 1.5, 1.8, 2], gap='small')
 
     with col_username:
         username = st.text_input("Enter your BoardGameGeek username:", label_visibility="collapsed", placeholder="BGG username")
