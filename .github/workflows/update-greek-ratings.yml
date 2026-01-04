@@ -6,8 +6,8 @@ on:
   workflow_dispatch:  # Manual trigger
   
   
- permissions:
-  contents: write  # Required to upload to releases
+permissions:
+ contents: write  # Required to upload to releases
 
 jobs:
   update-ratings:
