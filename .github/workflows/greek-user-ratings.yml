@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '0 0 * * *'  # Run daily at 0 AM UTC
   workflow_dispatch:  # Manual trigger
+  
+  
+ permissions:
+  contents: write  # Required to upload to releases
 
 jobs:
   update-ratings:
