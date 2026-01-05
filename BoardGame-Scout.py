@@ -1186,6 +1186,63 @@ def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
 
 
 
+# @st.cache_data(show_spinner=False)
+# def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
+#     """
+#     Produce recommendations for a *single* username.
+#     Returns DataFrame with columns:
+#     [game_id, title, predicted_rating, avg_greek_rating, reason]
+#     ready for st.dataframe.
+#     """
+#     import sqlite3, pandas as pd, numpy as np
+
+#     # 1. load similarity matrix (already cached)
+#     sim_df = build_user_similarity_matrix(db_mtime)
+#     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+#     if neighbours.empty:
+#         return pd.DataFrame()   # not enough neighbours
+
+#     # 2. load active user ratings + all Greek ratings
+#     conn = sqlite3.connect(DB_RATINGS)
+#     user_rates = pd.read_sql("SELECT game_id, rating FROM ratings WHERE username = ?", conn, params=(username,))
+#     all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+#     conn.close()
+
+#     seen = set(user_rates["game_id"].tolist())
+
+#     # 3. build neighbourhood rating matrix (only games not seen by active user)
+#     neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
+
+#     # 4. aggregate neighbour scores (weighted average by similarity)
+#     neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
+#     neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
+
+#     recs = (neigh_rates.groupby(["game_id"])
+#                        .agg(w_sum=("weighted", "sum"),
+#                             sim_sum=("similarity", "sum"),
+#                             count=("rating", "count"))
+#                        .reset_index())
+#     recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
+#     recs["pred"] = recs["w_sum"] / recs["sim_sum"]
+#     recs = recs.sort_values("pred", ascending=False).head(n)
+
+#     # 5. enrich with game titles + average Greek rating
+#     conn_bg = sqlite3.connect("boardgames.db")
+#     titles = pd.read_sql("SELECT id, title FROM games", conn_bg)
+#     greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
+#     conn_bg.close()
+
+#     recs = recs.merge(titles, left_on="game_id", right_on="id", how="left")
+#     recs = recs.merge(greek_avg, on="game_id", how="left")
+#     recs["avg_greek"] = recs["avg_greek"].round(2)
+
+#     # 6. build a short textual reason
+#     top_neigh = neighbours.head(5)
+#     reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
+#     recs["reason"] = reason
+
+#     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
+
 @st.cache_data(show_spinner=False)
 def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     """
@@ -1195,55 +1252,62 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     ready for st.dataframe.
     """
     import sqlite3, pandas as pd, numpy as np
-
+    
     # 1. load similarity matrix (already cached)
     sim_df = build_user_similarity_matrix(db_mtime)
     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
     if neighbours.empty:
         return pd.DataFrame()   # not enough neighbours
-
+    
     # 2. load active user ratings + all Greek ratings
     conn = sqlite3.connect(DB_RATINGS)
     user_rates = pd.read_sql("SELECT game_id, rating FROM ratings WHERE username = ?", conn, params=(username,))
     all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
     conn.close()
-
+    
     seen = set(user_rates["game_id"].tolist())
-
+    
     # 3. build neighbourhood rating matrix (only games not seen by active user)
     neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
-
+    
     # 4. aggregate neighbour scores (weighted average by similarity)
     neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
     neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
-
     recs = (neigh_rates.groupby(["game_id"])
-                       .agg(w_sum=("weighted", "sum"),
-                            sim_sum=("similarity", "sum"),
-                            count=("rating", "count"))
-                       .reset_index())
+                           .agg(w_sum=("weighted", "sum"),
+                                sim_sum=("similarity", "sum"),
+                                count=("rating", "count"))
+                           .reset_index())
     recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
     recs["pred"] = recs["w_sum"] / recs["sim_sum"]
-    recs = recs.sort_values("pred", ascending=False).head(n)
-
-    # 5. enrich with game titles + average Greek rating
+    recs = recs.sort_values("pred", ascending=False).head(n * 3)  # ← Get 3x more to compensate for filtering
+    
+    # 5. enrich with game titles + average Greek rating + FILTER OUT EXPANSIONS
     conn_bg = sqlite3.connect("boardgames.db")
-    titles = pd.read_sql("SELECT id, title FROM games", conn_bg)
+    
+    # ← CHANGED: Fetch categories column and filter out expansions
+    titles = pd.read_sql("""
+        SELECT id, title, categories 
+        FROM games
+        WHERE categories NOT LIKE '%Expansion for Base-game%' OR categories IS NULL
+    """, conn_bg)
+    
     greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
     conn_bg.close()
-
-    recs = recs.merge(titles, left_on="game_id", right_on="id", how="left")
+    
+    recs = recs.merge(titles, left_on="game_id", right_on="id", how="inner")  # ← Changed to 'inner' to exclude expansions
     recs = recs.merge(greek_avg, on="game_id", how="left")
     recs["avg_greek"] = recs["avg_greek"].round(2)
-
+    
+    # ← After filtering, take only the top N
+    recs = recs.head(n)
+    
     # 6. build a short textual reason
     top_neigh = neighbours.head(5)
-    reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
+    reason = f"Loved by top Greek users similar to you"
     recs["reason"] = reason
-
+    
     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
-
-
 
 
 
