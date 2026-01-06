@@ -272,17 +272,14 @@ st.markdown("""
 
     /* Match the height of number inputs */
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 39px !important;  # from 38
-        max-height: 39px !important;  # from 38
-        width: 100% !important;   # extra
+        min-height: 39px !important; 
+        max-height: 39px !important;  
     }
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-        min-height: 39px !important;  # from 38
-        padding-top: 8px !important; # from 8
-        padding-bottom: 8px !important; # from 8
-        flex-grow: 1 !important;   # extra
-        width: 200px !important;   # extra
+        min-height: 39px !important;  
+        padding-top: 8px !important; 
+        padding-bottom: 8px !important; 
     }
 
     /* Align multiselect input baseline with number inputs */
@@ -322,6 +319,22 @@ st.markdown("""
     div[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
         cursor: pointer !important;
     }
+
+            
+/* Force the internal Select container to fill the parent */
+[data-testid="stExpander"] div[data-baseweb="select"] {
+    width: 100% !important;
+}
+
+/* Target the specific div that holds the tags/placeholder */
+[data-testid="stExpander"] div[data-baseweb="select"] > div:first-child {
+    width: 100% !important;
+    display: flex !important;
+}
+
+
+
+
 
     /* ====== END FILTER SPACING ====== */
 
