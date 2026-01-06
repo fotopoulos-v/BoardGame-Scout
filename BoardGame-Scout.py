@@ -806,7 +806,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (To) ✅" if max_y_active else "Year (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
+        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year")
 
     # -------------------------------------------------
     # COLUMN 2 — Duration + Category + Mechanics
