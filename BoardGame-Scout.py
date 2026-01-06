@@ -274,6 +274,7 @@ st.markdown("""
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
         min-height: 39px !important;  # from 38
         max-height: 39px !important;  # from 38
+        width: 100% !important;   # extra
     }
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
@@ -281,6 +282,7 @@ st.markdown("""
         padding-top: 8px !important; # from 8
         padding-bottom: 8px !important; # from 8
         width: 100% !important;   # extra
+        flex-grow: 1 !important;   # extra
     }
 
     /* Align multiselect input baseline with number inputs */
