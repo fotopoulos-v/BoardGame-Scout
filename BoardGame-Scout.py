@@ -280,7 +280,7 @@ st.markdown("""
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
         margin: 0; 
-        margin-bottom: 0.4rem !important;  # did not exist
+        margin-bottom: 0.6rem !important;  # did not exist
     }
 
     /* Compact widget spacing */
@@ -293,7 +293,7 @@ st.markdown("""
 
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 0.3rem !important;  # from -1.4rem
+        margin-bottom: 0.4rem !important;  # from -1.4rem
         margin-top: 0.5rem !important;   # from 0.2rem
     }
 
