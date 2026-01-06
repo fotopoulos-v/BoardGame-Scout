@@ -280,7 +280,6 @@ st.markdown("""
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
         margin: 0; 
-        margin-bottom: 0.3rem !important;  # did not exist
     }
 
     /* Compact widget spacing */
@@ -293,8 +292,8 @@ st.markdown("""
 
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 0.4rem !important;  # from -1.4rem
-        margin-top: 0.5rem !important;   # from 0.2rem
+        margin-bottom: -1.4rem !important;  # from -1.4rem
+        margin-top: 0.2rem !important;   # from 0.2rem
     }
 
     /* First element in each column */
@@ -306,7 +305,7 @@ st.markdown("""
     [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
     [data-testid="stExpander"] .stSlider + div .stMarkdown,
     [data-testid="stExpander"] .stSelectbox + div .stMarkdown {
-        margin-top: 1.2rem !important;    # from 0.7rem  -- not working
+        margin-top: 0.7rem !important;    # from 0.7rem  -- not working
     }
 
     /* Active filter highlight */
@@ -328,33 +327,21 @@ st.markdown("""
             
 /* Target multiselects specifically inside the expander to add top space */
 [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-    margin-top: 0.5rem !important; /* Adjust this value as needed */        # from 1.85
+    margin-top: 1.85rem !important; /* Adjust this value as needed */        # from 1.85
 }
 
             
 
-            # NEW #     
-
-/* Target only the label text container for Mechanics */
-[data-testid="stExpander"] div.st-key-f_mechanics [data-testid="stWidgetLabel"] {
-    margin-top: 1.9rem !important;  /* Increase this to push the label DOWN */
-    margin-bottom: -0.5rem !important; /* Adjust this to control distance to its OWN input */
-}
-
-
-
-
-
 /* Add spacing to the Mechanics element container within the expander */
 [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
-    margin-top: 0.1rem !important;  # from -0.1rem
-    padding-top: 0.3rem !important;   # from -0.1rem
+    margin-top: -0.1rem !important;  # from -0.1rem
+    padding-top: -0.1rem !important;   # from -0.1rem
 }       
 
 /* Add space after the Category multiselect, before the Mechanics label */
 [data-testid="stExpander"] .st-key-f_category + div {
     margin-bottom: 1.2em !important;         
-    margin-top: 1.6em !important;     # from 0.4  -- not working
+    margin-top: 0.4em !important;     # from 0.4  -- not working
 }
 
 
@@ -737,7 +724,7 @@ def fetch_hot_games():
 # -------------------------
 # Search input field (full width)
 search_query = st.text_input("Search board games", placeholder="Enter a board game name (optional)", 
-                             key="search_query", label_visibility="collapsed")
+                             key="search_query")
 
 
 
@@ -790,7 +777,7 @@ with st.expander("🎚️ Filters"):
             f'{"Players (From) ✅" if min_p_active else "Players (From)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum players", min_value=1, max_value=20, key="min_players", label_visibility="collapsed")
+        st.number_input("Minimum players", min_value=1, max_value=20, key="min_players")
 
         max_p_active = st.session_state["max_players"] is not None
         st.markdown(
@@ -798,7 +785,7 @@ with st.expander("🎚️ Filters"):
             f'{"Players (To) ✅" if max_p_active else "Players (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum players", min_value=1, max_value=20, key="max_players", label_visibility="collapsed")
+        st.number_input("Maximum players", min_value=1, max_value=20, key="max_players")
 
         # YEAR
         for key in ["min_year", "max_year"]:
@@ -1334,9 +1321,9 @@ if st.session_state.get("show_user_section", False):
     col_username, col_list, col_reveal, col_rec = st.columns([2, 1.5, 1.6, 2.3], gap='small')
 
     with col_username:
-        username = st.text_input("Enter your BoardGameGeek username:", label_visibility="collapsed", placeholder="BGG username")
+        username = st.text_input("Enter your BoardGameGeek username:", placeholder="BGG username")
     with col_list:
-        option = st.selectbox("Choose list:", ["Owned Games", "Rated Games", "Wishlist"], label_visibility="collapsed")
+        option = st.selectbox("Choose list:", ["Owned Games", "Rated Games", "Wishlist"])
     with col_reveal:
         reveal_clicked = st.button("See your games", key="reveal_btn")
     with col_rec:
