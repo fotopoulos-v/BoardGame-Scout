@@ -853,7 +853,7 @@ with st.expander("🎚️ Filters"):
 
 
 
-        # labeled_text_filter("f_mechanics", "Mechanics")
+        labeled_text_filter("f_mechanics", "Mechanics")
         # MECHANICS multiselect
         if "f_mechanics" not in st.session_state:
             st.session_state["f_mechanics"] = []
