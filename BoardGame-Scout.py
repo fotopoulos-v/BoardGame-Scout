@@ -293,7 +293,7 @@ st.markdown("""
 
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 0rem !important;  # from -1.4rem
+        margin-bottom: 0.3rem !important;  # from -1.4rem
         margin-top: 0.5rem !important;   # from 0.2rem
     }
 
@@ -306,7 +306,7 @@ st.markdown("""
     [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
     [data-testid="stExpander"] .stSlider + div .stMarkdown,
     [data-testid="stExpander"] .stSelectbox + div .stMarkdown {
-        margin-top: 1.2rem !important;    # from 0.7rem
+        margin-top: 1.2rem !important;    # from 0.7rem  -- not working
     }
 
     /* Active filter highlight */
