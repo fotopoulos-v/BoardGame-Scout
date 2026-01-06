@@ -337,7 +337,7 @@ st.markdown("""
 
 /* Target only the label text container for Mechanics */
 [data-testid="stExpander"] div.st-key-f_mechanics [data-testid="stWidgetLabel"] {
-    margin-top: 1.2rem !important;  /* Increase this to push the label DOWN */
+    margin-top: 1.9rem !important;  /* Increase this to push the label DOWN */
     margin-bottom: -0.5rem !important; /* Adjust this to control distance to its OWN input */
 }
 
