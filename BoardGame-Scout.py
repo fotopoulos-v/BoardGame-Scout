@@ -374,7 +374,7 @@ st.markdown("""
     /* Adjust button position to align with selectbox/input baseline */
     div.stElementContainer.st-key-reveal_btn div.stButton,
     div.stElementContainer.st-key-rec_btn div.stButton {
-        margin-top: 25px !important;
+        margin-top: 28px !important;
     }
 
 
