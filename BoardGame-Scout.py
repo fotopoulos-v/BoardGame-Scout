@@ -331,9 +331,23 @@ st.markdown("""
     margin-top: 0.5rem !important; /* Adjust this value as needed */        # from 1.85
 }
 
+            
+
+            # NEW #     
+
+/* Target only the label text container for Mechanics */
+[data-testid="stExpander"] div.st-key-f_mechanics [data-testid="stWidgetLabel"] {
+    margin-top: 1.2rem !important;  /* Increase this to push the label DOWN */
+    margin-bottom: -0.5rem !important; /* Adjust this to control distance to its OWN input */
+}
+
+
+
+
+
 /* Add spacing to the Mechanics element container within the expander */
 [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
-    margin-top: 0.4rem !important;  # from -0.1rem
+    margin-top: 0.1rem !important;  # from -0.1rem
     padding-top: 0.3rem !important;   # from -0.1rem
 }       
 
