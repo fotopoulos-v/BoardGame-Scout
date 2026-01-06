@@ -283,6 +283,7 @@ st.markdown("""
         padding-bottom: 8px !important; # from 8
         width: 100% !important;   # extra
         flex-grow: 1 !important;   # extra
+        max-width: 200px !important;   # extra
     }
 
     /* Align multiselect input baseline with number inputs */
@@ -290,6 +291,7 @@ st.markdown("""
         display: flex;
         align-items: flex-start;
         width: 100% !important;   # extra
+        max-width: 200px !important;   # extra
     }
 
     /* Remove extra spacing in multiselect container */
