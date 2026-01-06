@@ -1289,8 +1289,11 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     
     # 6. build a short textual reason
     top_neigh = neighbours.head(5)
-    reason = f"Loved by top Greek users similar to you"
+    # reason = f"Loved by top Greek users similar to you"
+    # recs["reason"] = reason
+    reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
     recs["reason"] = reason
+
     
     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
 
