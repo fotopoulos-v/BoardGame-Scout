@@ -275,12 +275,12 @@ st.markdown("""
 
  /* Compact filters inside the expander */
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
-        gap: 0.1rem !important; # from 0.1
+        gap: 0.1rem !important; 
     }
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
-        # margin: 0; 
-        margin-bottom: 0.8rem !important; 
+        margin: 0; 
+        # margin-bottom: 0.8rem !important; 
     }
 
     /* Compact widget spacing */
@@ -288,7 +288,7 @@ st.markdown("""
     [data-testid="stExpander"] .stSlider,
     [data-testid="stExpander"] .stSelectbox,
     [data-testid="stExpander"] .stTextInput {
-        margin: 0.5rem !important;  # from 0 sketo
+        margin: 0 !important;  # from 0 sketo
     }
 
     /* Label spacing */
