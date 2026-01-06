@@ -281,17 +281,15 @@ st.markdown("""
         min-height: 39px !important;  # from 38
         padding-top: 8px !important; # from 8
         padding-bottom: 8px !important; # from 8
-        width: 100% !important;   # extra
         flex-grow: 1 !important;   # extra
-        max-width: 200px !important;   # extra
+        width: 200px !important;   # extra
     }
 
     /* Align multiselect input baseline with number inputs */
     [data-testid="stExpander"] .stMultiSelect {
         display: flex;
         align-items: flex-start;
-        width: 100% !important;   # extra
-        max-width: 200px !important;   # extra
+        width: 200px !important;   # extra
     }
 
     /* Remove extra spacing in multiselect container */
