@@ -288,7 +288,7 @@ st.markdown("""
     [data-testid="stExpander"] .stSlider,
     [data-testid="stExpander"] .stSelectbox,
     [data-testid="stExpander"] .stTextInput {
-        margin: 0 !important;
+        margin: 0.5rem !important;  # from 0 sketo
     }
 
     /* Label spacing */
