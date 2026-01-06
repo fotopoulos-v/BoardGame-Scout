@@ -278,7 +278,7 @@ st.markdown("""
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
         min-height: 36px !important;  # from 38
-        padding-top: 8px !important;
+        padding-top: 18px !important; # from 8
         padding-bottom: 8px !important;
     }
 
