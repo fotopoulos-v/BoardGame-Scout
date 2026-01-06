@@ -317,7 +317,7 @@ st.markdown("""
 
 /* Labels inside the expander columns */
 [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-    margin-bottom: 0.8rem !important;  /* add a bit of space below the label */   # from 0.3rem
+    margin-bottom: 0.2rem !important;  /* add a bit of space below the label */   # from 0.3rem
 }
 
 /* Number input fields immediately following those labels */
