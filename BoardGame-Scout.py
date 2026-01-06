@@ -290,7 +290,7 @@ st.markdown("""
 
     /* Remove extra spacing in multiselect container */
     [data-testid="stExpander"] .stMultiSelect > div {
-        margin: 0 !important;
+        margin: 0.8 !important;  # from 0
         padding: 0 !important;
     }
 
