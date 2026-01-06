@@ -229,12 +229,12 @@ st.markdown("""
     [data-testid="stExpander"] .stSelectbox,
     [data-testid="stExpander"] .stTextInput {
         margin-top: 0 !important;
-        margin-bottom: 1.3rem !important;  # from 0.3
+        margin-bottom: 0.3rem !important;
     }
 
     /* Compact label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 0.1rem !important;
+        margin-bottom: 1.1rem !important;   # from 0.1
         margin-top: 0.4rem !important;
     }
 
