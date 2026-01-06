@@ -272,12 +272,12 @@ st.markdown("""
 
     /* Match the height of number inputs */
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 36px !important;  # from 38
-        max-height: 36px !important;  # from 38
+        min-height: 37px !important;  # from 38
+        max-height: 37px !important;  # from 38
     }
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-        min-height: 36px !important;  # from 38
+        min-height: 37px !important;  # from 38
         padding-top: 18px !important; # from 8
         padding-bottom: 18px !important; # from 8
     }
@@ -290,8 +290,8 @@ st.markdown("""
 
     /* Remove extra spacing in multiselect container */
     [data-testid="stExpander"] .stMultiSelect > div {
-        margin: 0.8 !important;  # from 0
-        padding: 1.0 !important; # from 0
+        margin: 0 !important;  # from 0
+        padding: 0 !important; # from 0
     }
 
     /* Category and Mechanics spacing */
