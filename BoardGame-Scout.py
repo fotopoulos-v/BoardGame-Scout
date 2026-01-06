@@ -876,7 +876,7 @@ with st.expander("🎚️ Filters"):
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
-        st.multiselect("Select mechanics", mechanics_options, key="f_mechanics", placeholder="Select mechanics...")
+        st.multiselect("Select mechanics", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
 
     # -------------------------------------------------
     # COLUMN 3 — Designers + Artists + Publishers
