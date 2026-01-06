@@ -275,7 +275,7 @@ st.markdown("""
 
  /* Compact filters inside the expander */
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
-        gap: 0.5rem !important; # from 0.1
+        gap: 0.1rem !important; # from 0.1
     }
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
