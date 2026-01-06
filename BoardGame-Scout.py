@@ -272,8 +272,8 @@ st.markdown("""
 
     /* Match the height of number inputs */
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 30px !important;  # from 38
-        max-height: 30px !important;  # from 38
+        min-height: 36px !important;  # from 38
+        max-height: 36px !important;  # from 38
     }
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
