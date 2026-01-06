@@ -830,7 +830,7 @@ with st.expander("🎚️ Filters"):
                 st.session_state[key] = ""
             active = st.session_state[key].strip() != ""
             st.markdown(
-                f'<div style="color:{("#00FFFF" if active else "inherit")}; ">' # margin:0;
+                f'<div style="color:{("#00FFFF" if active else "inherit")}; margin:0; ">' # margin:0;
                 f'{label + " ✅" if active else label}</div>',
                 unsafe_allow_html=True
             )
