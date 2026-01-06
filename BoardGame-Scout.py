@@ -228,7 +228,7 @@ st.markdown("""
     [data-testid="stExpander"] .stSlider,
     [data-testid="stExpander"] .stSelectbox,
     [data-testid="stExpander"] .stTextInput {
-        margin-top: 0 !important;
+        margin-top: 1.0 !important;  # from 0
         margin-bottom: 0.3rem !important;
     }
 
