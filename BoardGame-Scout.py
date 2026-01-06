@@ -859,7 +859,7 @@ with st.expander("🎚️ Filters"):
             f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
             unsafe_allow_html=True
         )
-        st.multiselect("Select categories", category_options, key="f_category", placeholder="Select categories...")
+        st.multiselect("Select categories", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
 
 
 
