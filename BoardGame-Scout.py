@@ -359,6 +359,31 @@ st.markdown("""
     /* Narrow search input container */
     div.stTextInput[data-testid="stTextInput"] { max-width: 400px !important; margin-left:0 !important; }
 
+
+
+    /* ====== ALIGN USER SECTION BUTTONS WITH SELECTBOX ====== */
+
+    /* Make the button containers align with inputs */
+    div.stElementContainer.st-key-reveal_btn,
+    div.stElementContainer.st-key-rec_btn {
+        display: flex;
+        align-items: flex-end;
+        padding-bottom: 0 !important;
+    }
+
+    /* Adjust button position to align with selectbox/input baseline */
+    div.stElementContainer.st-key-reveal_btn div.stButton,
+    div.stElementContainer.st-key-rec_btn div.stButton {
+        margin-top: 25px !important;
+    }
+
+
+
+
+
+
+
+            
     .db-info-box {
         background-color: rgba(138, 99, 255, 0.15);
         padding: 12px 14px;
