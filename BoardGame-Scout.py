@@ -280,7 +280,7 @@ st.markdown("""
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
         margin: 0; 
-        # margin-bottom: 0.8rem !important; 
+        margin-bottom: 0.4rem !important; # did not exist
     }
 
     /* Compact widget spacing */
