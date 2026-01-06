@@ -293,7 +293,7 @@ st.markdown("""
 
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 0.6rem !important;  # from -1.4rem
+        margin-bottom: 0.4rem !important;  # from -1.4rem
         margin-top: 0.5rem !important;   # from 0.2rem
     }
 
