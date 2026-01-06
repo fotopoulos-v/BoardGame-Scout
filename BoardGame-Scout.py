@@ -280,6 +280,7 @@ st.markdown("""
         min-height: 39px !important;  # from 38
         padding-top: 8px !important; # from 8
         padding-bottom: 8px !important; # from 8
+        width: 100% !important;   # extra
     }
 
     /* Align multiselect input baseline with number inputs */
