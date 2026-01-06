@@ -278,8 +278,8 @@ st.markdown("""
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
         min-height: 39px !important;  # from 38
-        padding-top: 18px !important; # from 8
-        padding-bottom: 18px !important; # from 8
+        padding-top: 8px !important; # from 8
+        padding-bottom: 8px !important; # from 8
     }
 
     /* Align multiselect input baseline with number inputs */
