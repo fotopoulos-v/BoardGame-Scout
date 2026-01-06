@@ -294,7 +294,7 @@ st.markdown("""
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
         margin-bottom: 0rem !important;  # from -1.4rem
-        margin-top: 0.2rem !important;
+        margin-top: 0.5rem !important;   # from 0.2rem
     }
 
     /* First element in each column */
@@ -317,7 +317,7 @@ st.markdown("""
 
 /* Labels inside the expander columns */
 [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-    margin-bottom: 0.2rem !important;  /* add a bit of space below the label */   # from 0.3rem
+    margin-bottom: 0.3rem !important;  /* add a bit of space below the label */  
 }
 
 /* Number input fields immediately following those labels */
