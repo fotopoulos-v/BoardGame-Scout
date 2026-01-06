@@ -234,7 +234,7 @@ st.markdown("""
 
     /* Compact label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 1.1rem !important;   # from 0.1
+        margin-bottom: 1.1rem !important;  
         margin-top: 0.4rem !important;
     }
 
@@ -272,12 +272,12 @@ st.markdown("""
 
     /* Match the height of number inputs */
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 38px !important;
-        max-height: 38px !important;
+        min-height: 30px !important;  # from 38
+        max-height: 30px !important;  # from 38
     }
     
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-        min-height: 38px !important;
+        min-height: 30px !important;  # from 38
         padding-top: 8px !important;
         padding-bottom: 8px !important;
     }
