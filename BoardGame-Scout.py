@@ -767,7 +767,7 @@ with st.expander("🎚️ Filters"):
             f'{"Players (From) ✅" if min_p_active else "Players (From)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum players", min_value=1, max_value=20, key="min_players")
+        st.number_input("Minimum players", min_value=1, max_value=20, key="min_players", label_visibility="collapsed")
 
         max_p_active = st.session_state["max_players"] is not None
         st.markdown(
@@ -775,7 +775,7 @@ with st.expander("🎚️ Filters"):
             f'{"Players (To) ✅" if max_p_active else "Players (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum players", min_value=1, max_value=20, key="max_players")
+        st.number_input("Maximum players", min_value=1, max_value=20, key="max_players", label_visibility="collapsed")
 
         # YEAR
         for key in ["min_year", "max_year"]:
@@ -788,7 +788,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (From) ✅" if min_y_active else "Year (From)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year")
+        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year", label_visibility="collapsed")
 
         max_y_active = st.session_state["max_year"] is not None
         st.markdown(
@@ -796,7 +796,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (To) ✅" if max_y_active else "Year (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year")
+        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
 
     # -------------------------------------------------
     # COLUMN 2 — Duration + Category + Mechanics
