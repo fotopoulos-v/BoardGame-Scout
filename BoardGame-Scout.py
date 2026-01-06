@@ -280,7 +280,6 @@ st.markdown("""
     [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
         padding: 0; 
         margin: 0; 
-        margin-bottom: 0.4rem !important; # did not exist
     }
 
     /* Compact widget spacing */
@@ -288,12 +287,12 @@ st.markdown("""
     [data-testid="stExpander"] .stSlider,
     [data-testid="stExpander"] .stSelectbox,
     [data-testid="stExpander"] .stTextInput {
-        margin: 0.4rem !important;  # from 0 sketo
+        margin: 0 !important;  
     }
 
     /* Label spacing */
     [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: -1.4rem !important;
+        margin-bottom: -0.8rem !important;  # from -1.4rem
         margin-top: 0.2rem !important;
     }
 
@@ -306,7 +305,7 @@ st.markdown("""
     [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
     [data-testid="stExpander"] .stSlider + div .stMarkdown,
     [data-testid="stExpander"] .stSelectbox + div .stMarkdown {
-        margin-top: 0.7rem !important;  # 0.7rem
+        margin-top: 0.7rem !important;  
     }
 
     /* Active filter highlight */
