@@ -844,7 +844,7 @@ with st.expander("🎚️ Filters"):
                 f'{label + " ✅" if active else label}</div>',
                 unsafe_allow_html=True
             )
-            st.text_input("Category", key=key)
+            st.text_input("Category", key=key, label_visibility="collapsed")
 
         # labeled_text_filter("f_category", "Type / Category")
         # CATEGORY multiselect
