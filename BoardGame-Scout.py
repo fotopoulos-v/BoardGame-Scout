@@ -748,6 +748,14 @@ def fetch_hot_games():
 
         df = pd.DataFrame(hot_games)
 
+        # ✅ FIX: Convert numeric columns before rounding
+        numeric_cols = ["Geek Rating", "Average Rating", "Complexity", "Number of Voters",
+                        "Year", "Min Players", "Max Players", "Min Time", "Max Time", "Min Age"]
+
+        for col in numeric_cols:
+            if col in df.columns:
+                df[col] = pd.to_numeric(df[col], errors='coerce')
+
         # Round numeric stats to 2 decimals
         for col in ["Geek Rating", "Average Rating", "Complexity"]:
             if col in df.columns:
@@ -1029,11 +1037,6 @@ def fetch_bgg_collection(username, filter_flag, max_retries=10, delay=3):
                 if not items:
                     return None, f"No {filter_flag} games found for user '{username}'"
                 
-                # # DEBUG: Print first item structure
-                # if items and len(items) > 0:
-                #     print("DEBUG - First item XML structure:")
-                #     print(ET.tostring(items[0], encoding='unicode')[:500])
-                
                 # Parse games into list
                 games = []
                 for item in items:
@@ -1076,9 +1079,19 @@ def fetch_bgg_collection(username, filter_flag, max_retries=10, delay=3):
                 
                 df = pd.DataFrame(games)
                 
-                # Format numeric columns
+                # ✅ FIX: Convert numeric columns
                 if "BGG Rating" in df.columns:
                     df["BGG Rating"] = pd.to_numeric(df["BGG Rating"], errors='coerce').round(2)
+
+                if "Plays" in df.columns:
+                    df["Plays"] = pd.to_numeric(df["Plays"], errors='coerce')
+
+                if "Year" in df.columns:
+                    df["Year"] = pd.to_numeric(df["Year"], errors='coerce')
+
+                # Handle "Your Rating" - it might be "Not Rated"
+                if "Your Rating" in df.columns:
+                    df["Your Rating"] = pd.to_numeric(df["Your Rating"], errors='coerce')
                 
                 return df, None
                 
@@ -1289,8 +1302,6 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     
     # 6. build a short textual reason
     top_neigh = neighbours.head(5)
-    # reason = f"Loved by top Greek users similar to you"
-    # recs["reason"] = reason
     reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
     recs["reason"] = reason
 
@@ -1796,6 +1807,15 @@ if st.session_state.get("show_search_results"):
         # Continuous row numbering across pages
         global_start_number = page * PAGE_SIZE
         df_display = df_page.reindex(columns=display_cols).copy()
+
+        # ✅ FIX: Convert numeric columns to proper numeric types
+        numeric_cols = ["Geek Rating", "Average Rating", "Number of Voters", 
+                        "Year", "Complexity", "Min Players", "Max Players",
+                        "Min Time", "Max Time", "Min Age"]
+        
+        for col in numeric_cols:
+            if col in df_display.columns:
+                df_display[col] = pd.to_numeric(df_display[col], errors='coerce')
 
         # Round numeric columns to 2 decimals
         df_display["Geek Rating"] = pd.to_numeric(df_display["Geek Rating"], errors='coerce').round(2)
