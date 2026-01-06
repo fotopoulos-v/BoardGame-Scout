@@ -1338,7 +1338,7 @@ st.markdown("""
         width  : 190px !important;              /* make it wider */
         height : 38px !important;
         margin-top: 0px !important;
-        margin-left: 10px !important;
+        margin-left: 8px !important;
         border: 1px solid #4F1022 !important;
         transform: none !important;
     }
