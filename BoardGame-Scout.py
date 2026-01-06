@@ -212,24 +212,104 @@ st.markdown("""
     ::placeholder { color: rgba(200, 200, 200, 0.35) !important; }
     input:focus, textarea:focus, select:focus, div[data-baseweb="input"] input:focus { color: #FAFAFA !important; }
 
-    /* Force multiselect to match text input height */
-    [data-testid="stExpander"] .stMultiSelect {
+    /* ====== ULTRA-COMPACT FILTER SPACING ====== */
+    
+    /* Minimal gap between elements */
+    [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
+        gap: 0 !important;
+    }
+    [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
+        padding: 0 !important; 
         margin: 0 !important;
     }
-    [data-testid="stExpander"] .stMultiSelect > div {
-        min-height: 2px !important;
-        margin-bottom: -0.4rem !important;
-    }
-    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 2px !important;
-    }
-    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-        min-height: 5.5px !important;
-        padding-top: 5.5px !important;
-        padding-bottom: 5.5px !important;  
+
+    /* Compact all widgets - minimal margins */
+    [data-testid="stExpander"] .stNumberInput,
+    [data-testid="stExpander"] .stSlider,
+    [data-testid="stExpander"] .stSelectbox,
+    [data-testid="stExpander"] .stTextInput {
+        margin-top: 0 !important;
+        margin-bottom: 0.3rem !important;
     }
 
-    /* Remove text cursor from multiselect - more specific */
+    /* Compact label spacing */
+    [data-testid="stExpander"] .stMarkdown { 
+        margin-bottom: 0.1rem !important;
+        margin-top: 0.4rem !important;
+    }
+
+    /* First label in each column - no top margin */
+    [data-testid="stExpander"] .stColumn > div > div:first-child .stMarkdown {
+        margin-top: 0 !important;
+    }
+
+    /* Space between input → next label (minimal) */
+    [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
+    [data-testid="stExpander"] .stSlider + div .stMarkdown,
+    [data-testid="stExpander"] .stSelectbox + div .stMarkdown,
+    [data-testid="stExpander"] .stTextInput + div .stMarkdown {
+        margin-top: 0.5rem !important;
+    }
+
+    /* Active filter highlight */
+    .filter-label-active {
+        color: #00FFFF !important;
+        font-weight: bold;
+    }
+
+    /* Input fields - minimal spacing */
+    [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
+        margin-top: 0 !important;
+    }
+
+    /* ====== FIX MULTISELECT HEIGHT & ALIGNMENT ====== */
+    
+    /* Make multiselect match number input height */
+    [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+        margin-top: 0 !important;
+        margin-bottom: 0.3rem !important;
+    }
+
+    /* Match the height of number inputs */
+    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
+        min-height: 38px !important;
+        max-height: 38px !important;
+    }
+    
+    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
+        min-height: 38px !important;
+        padding-top: 8px !important;
+        padding-bottom: 8px !important;
+    }
+
+    /* Align multiselect input baseline with number inputs */
+    [data-testid="stExpander"] .stMultiSelect {
+        display: flex;
+        align-items: flex-start;
+    }
+
+    /* Remove extra spacing in multiselect container */
+    [data-testid="stExpander"] .stMultiSelect > div {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* Category and Mechanics spacing */
+    [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
+        margin-top: 0 !important;
+    }
+
+    [data-testid="stExpander"] .st-key-f_category + div {
+        margin-top: 0.5rem !important;
+    }
+
+    /* Slider - make more compact */
+    [data-testid="stExpander"] .stSlider {
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+    }
+
+    /* Remove text cursor from multiselect */
     div[data-testid="stMultiSelect"] input,
     div[data-testid="stMultiSelect"] input:hover,
     div[data-testid="stMultiSelect"] input:focus,
@@ -237,7 +317,9 @@ st.markdown("""
     div[data-testid="stMultiSelect"] [data-baseweb="select"],
     div[data-testid="stMultiSelect"] [data-baseweb="select"] > div {
         cursor: pointer !important;
-    }   
+    }
+
+    /* ====== END FILTER SPACING ====== */
 
     /* Large buttons */
     div.stButton > button {
@@ -263,78 +345,6 @@ st.markdown("""
 
     /* Narrow search input container */
     div.stTextInput[data-testid="stTextInput"] { max-width: 400px !important; margin-left:0 !important; }
-
-    /* ====== FIXED FILTER SPACING ====== */
-    
-    /* Compact filters inside the expander */
-    [data-testid="stExpander"] [data-testid="stVerticalBlock"] { 
-        gap: 0.5rem !important;
-    }
-    [data-testid="stExpander"] [data-testid="stVerticalBlock"] > div {
-        padding: 0; 
-        margin-bottom: 0.8rem !important;
-    }
-
-    /* Compact widget spacing */
-    [data-testid="stExpander"] .stNumberInput,
-    [data-testid="stExpander"] .stSlider,
-    [data-testid="stExpander"] .stSelectbox,
-    [data-testid="stExpander"] .stTextInput {
-        margin-bottom: 0.5rem !important;
-    }
-
-    /* Label spacing - FIXED: no more negative margins! */
-    [data-testid="stExpander"] .stMarkdown { 
-        margin-bottom: 0.3rem !important;
-        margin-top: 0.5rem !important;
-    }
-
-    /* First element in each column */
-    [data-testid="stExpander"] .stColumn > div > div:first-child .stMarkdown {
-        margin-top: 0 !important;
-    }
-
-    /* Space between input → next label */
-    [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
-    [data-testid="stExpander"] .stSlider + div .stMarkdown,
-    [data-testid="stExpander"] .stSelectbox + div .stMarkdown,
-    [data-testid="stExpander"] .stTextInput + div .stMarkdown {
-        margin-top: 1rem !important;
-    }
-
-    /* Active filter highlight */
-    .filter-label-active {
-        color: #00FFFF !important;
-        font-weight: bold;
-    }
-
-    /* Labels inside the expander columns */
-    [data-testid="stExpander"] .stColumn div[style*="margin: 0px"] {
-        margin-bottom: 0.5rem !important;
-    }
-
-    /* Number input fields immediately following those labels */
-    [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
-        margin-top: 0.2rem !important;
-    }
-
-    /* Target multiselects specifically inside the expander to add top space */
-    [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-        margin-top: 0.3rem !important;
-        margin-bottom: 1rem !important;
-    }
-
-    /* Add spacing to the Mechanics element container within the expander */
-    [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
-        margin-top: 0.5rem !important;
-    }       
-
-    /* Add space after the Category multiselect, before the Mechanics label */
-    [data-testid="stExpander"] .st-key-f_category + div {
-        margin-top: 1rem !important;
-    }
-
-    /* ====== END FILTER SPACING ====== */
 
     .db-info-box {
         background-color: rgba(138, 99, 255, 0.15);
@@ -853,7 +863,7 @@ with st.expander("🎚️ Filters"):
 
 
 
-        labeled_text_filter("f_mechanics", "Mechanics")
+        # labeled_text_filter("f_mechanics", "Mechanics")
         # MECHANICS multiselect
         if "f_mechanics" not in st.session_state:
             st.session_state["f_mechanics"] = []
