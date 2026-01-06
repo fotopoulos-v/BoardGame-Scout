@@ -286,7 +286,6 @@ st.markdown("""
     [data-testid="stExpander"] .stMultiSelect {
         display: flex;
         align-items: flex-start;
-        width: 200px !important;   # extra
     }
 
     /* Remove extra spacing in multiselect container */
