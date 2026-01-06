@@ -306,7 +306,7 @@ st.markdown("""
     [data-testid="stExpander"] .stNumberInput + div .stMarkdown,
     [data-testid="stExpander"] .stSlider + div .stMarkdown,
     [data-testid="stExpander"] .stSelectbox + div .stMarkdown {
-        margin-top: 0.7rem !important;  
+        margin-top: 1.2rem !important;    # from 0.7rem
     }
 
     /* Active filter highlight */
