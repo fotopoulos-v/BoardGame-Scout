@@ -832,7 +832,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max duration (min) ✅" if max_d_active else "Max duration (min)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration")
+        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
 
         # CATEGORY
         def labeled_text_filter(key, label):
@@ -844,7 +844,7 @@ with st.expander("🎚️ Filters"):
                 f'{label + " ✅" if active else label}</div>',
                 unsafe_allow_html=True
             )
-            st.text_input("Category", key=key, label_visibility="collapsed")
+            st.text_input("Category", key=key)
 
         # labeled_text_filter("f_category", "Type / Category")
         # CATEGORY multiselect
