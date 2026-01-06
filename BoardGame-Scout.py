@@ -333,8 +333,8 @@ st.markdown("""
 
 /* Add spacing to the Mechanics element container within the expander */
 [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
-    margin-top: 0.3rem !important;  # from -0.1rem
-    padding-top: -0.1rem !important;
+    margin-top: 0.0rem !important;  # from -0.1rem
+    padding-top: 0.3rem !important;   # from -0.1rem
 }       
 
 /* Add space after the Category multiselect, before the Mechanics label */
