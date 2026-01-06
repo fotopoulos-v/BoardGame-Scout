@@ -890,7 +890,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max Complexity (1-5) ✅" if comp_active else "Max Complexity (1-5)"}</div>',
             unsafe_allow_html=True
         )
-        st.slider("Minimum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider")
+        st.slider("Minimum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider", label_visibility="collapsed")
 
         # MIN AGE
         if "min_age" not in st.session_state:
@@ -902,7 +902,7 @@ with st.expander("🎚️ Filters"):
             f'{"Min Age ✅" if age_active else "Min Age"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age")
+        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age", label_visibility="collapsed")
 
         # MAX RESULTS
         if "max_results" not in st.session_state:
@@ -914,7 +914,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max Results ⚠️" if mr_active else "Max Results (0 = unlimited)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum results", min_value=0, max_value=1_000_000, key="max_results")
+        st.number_input("Maximum results", min_value=0, max_value=1_000_000, key="max_results", label_visibility="collapsed")
 
 
 
