@@ -321,22 +321,9 @@ st.markdown("""
     }
 
             
-/* Force the internal Select container to fill the parent */
-[data-testid="stExpander"] div[data-baseweb="select"] {
-    width: 100% !important;
-}
-
-/* Target the specific div that holds the tags/placeholder */
-[data-testid="stExpander"] div[data-baseweb="select"] > div:first-child {
-    width: 100% !important;
-    display: flex !important;
-}
-
-
-
-
-
     /* ====== END FILTER SPACING ====== */
+
+            
 
     /* Large buttons */
     div.stButton > button {
