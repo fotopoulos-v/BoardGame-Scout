@@ -806,7 +806,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (To) ✅" if max_y_active else "Year (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year")
+        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
 
     # -------------------------------------------------
     # COLUMN 2 — Duration + Category + Mechanics
@@ -832,7 +832,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max duration (min) ✅" if max_d_active else "Max duration (min)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
+        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration")
 
         # CATEGORY
         def labeled_text_filter(key, label):
