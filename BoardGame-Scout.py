@@ -264,23 +264,43 @@ st.markdown("""
 
     /* ====== FIX MULTISELECT HEIGHT & ALIGNMENT ====== */
     
-    /* Make multiselect match number input height */
+    # /* Make multiselect match number input height */
+    # [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
+    #     margin-top: 0 !important;
+    #     margin-bottom: 0.3rem !important;
+    # }
     [data-testid="stExpander"] div[data-testid="stMultiSelect"] {
-        margin-top: 0 !important;
-        margin-bottom: 0.3rem !important;
-    }
+    margin-top: 0 !important;
+    margin-bottom: 0.3rem !important;
+    width: 100% !important;
+}
+            
 
     /* Match the height of number inputs */
+    # [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
+    #     min-height: 40px !important; 
+    #     max-height: 40px !important;  
+    # }
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-        min-height: 40px !important; 
-        max-height: 40px !important;  
-    }
+    min-height: 40px !important; 
+    max-height: 40px !important;
+    width: 100% !important;
+}
     
-    [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-        min-height: 40px !important;  
-        padding-top: 4px !important; 
-        padding-bottom: 4px !important; 
-    }
+    
+    # [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
+    #     min-height: 40px !important;  
+    #     padding-top: 4px !important; 
+    #     padding-bottom: 4px !important; 
+    # }
+[data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
+    min-height: 40px !important;  
+    padding-top: 4px !important; 
+    padding-bottom: 4px !important;
+    width: 100% !important;
+}
+            
+
 
     /* Align multiselect input baseline with number inputs */
     [data-testid="stExpander"] .stMultiSelect {
@@ -288,11 +308,17 @@ st.markdown("""
         align-items: flex-start;
     }
 
-    /* Remove extra spacing in multiselect container */
+    # /* Remove extra spacing in multiselect container */
+    # [data-testid="stExpander"] .stMultiSelect > div {
+    #     margin: 0 !important;  # from 0
+    #     padding: 0 !important; # from 0
+    # }
     [data-testid="stExpander"] .stMultiSelect > div {
-        margin: 0 !important;  # from 0
-        padding: 0 !important; # from 0
-    }
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+}
+
 
     /* Category and Mechanics spacing */
     [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
