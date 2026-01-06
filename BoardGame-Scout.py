@@ -798,7 +798,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (From) ✅" if min_y_active else "Year (From)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year", label_visibility="collapsed")
+        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year")
 
         max_y_active = st.session_state["max_year"] is not None
         st.markdown(
@@ -806,7 +806,7 @@ with st.expander("🎚️ Filters"):
             f'{"Year (To) ✅" if max_y_active else "Year (To)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
+        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year")
 
     # -------------------------------------------------
     # COLUMN 2 — Duration + Category + Mechanics
@@ -823,7 +823,7 @@ with st.expander("🎚️ Filters"):
             f'{"Min duration (min) ✅" if min_d_active else "Min duration (min)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum duration", min_value=1, max_value=600, key="min_duration", label_visibility="collapsed")
+        st.number_input("Minimum duration", min_value=1, max_value=600, key="min_duration")
 
         # MAX DURATION
         max_d_active = st.session_state["max_duration"] is not None
@@ -832,7 +832,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max duration (min) ✅" if max_d_active else "Max duration (min)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
+        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration")
 
         # CATEGORY
         def labeled_text_filter(key, label):
@@ -844,7 +844,7 @@ with st.expander("🎚️ Filters"):
                 f'{label + " ✅" if active else label}</div>',
                 unsafe_allow_html=True
             )
-            st.text_input("Category", key=key, label_visibility="collapsed")
+            st.text_input("Category", key=key)
 
         # labeled_text_filter("f_category", "Type / Category")
         # CATEGORY multiselect
@@ -859,7 +859,7 @@ with st.expander("🎚️ Filters"):
             f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
             unsafe_allow_html=True
         )
-        st.multiselect("Select categories", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
+        st.multiselect("Select categories", category_options, key="f_category", placeholder="Select categories...")
 
 
 
@@ -876,7 +876,7 @@ with st.expander("🎚️ Filters"):
             f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
             unsafe_allow_html=True
         )
-        st.multiselect("Select mechanics", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
+        st.multiselect("Select mechanics", mechanics_options, key="f_mechanics", placeholder="Select mechanics...")
 
     # -------------------------------------------------
     # COLUMN 3 — Designers + Artists + Publishers
@@ -900,7 +900,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max Complexity (1-5) ✅" if comp_active else "Max Complexity (1-5)"}</div>',
             unsafe_allow_html=True
         )
-        st.slider("Minimum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider", label_visibility="collapsed")
+        st.slider("Minimum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider")
 
         # MIN AGE
         if "min_age" not in st.session_state:
@@ -912,7 +912,7 @@ with st.expander("🎚️ Filters"):
             f'{"Min Age ✅" if age_active else "Min Age"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age", label_visibility="collapsed")
+        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age")
 
         # MAX RESULTS
         if "max_results" not in st.session_state:
@@ -924,7 +924,7 @@ with st.expander("🎚️ Filters"):
             f'{"Max Results ⚠️" if mr_active else "Max Results (0 = unlimited)"}</div>',
             unsafe_allow_html=True
         )
-        st.number_input("Maximum results", min_value=0, max_value=1_000_000, key="max_results", label_visibility="collapsed")
+        st.number_input("Maximum results", min_value=0, max_value=1_000_000, key="max_results")
 
 
 
