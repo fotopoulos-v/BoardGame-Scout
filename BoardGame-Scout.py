@@ -1356,49 +1356,49 @@ def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
 
 
 
-# db_mtime = os.path.getmtime(DB_RATINGS)
-# @st.cache_data(show_spinner=False)
-# def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
-#     """
-#     Offline step: load the ratings table, mean-centre, compute cosine
-#     similarity between every pair of users that share >= MIN_OVERLAP games.
-#     Returns a tall DataFrame: columns = [user_1, user_2, similarity]
-#     """
-#     import sqlite3, pandas as pd, numpy as np
-#     from sklearn.metrics.pairwise import cosine_similarity
+db_mtime = os.path.getmtime(DB_RATINGS)
+@st.cache_data(show_spinner=False)
+def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
+    """
+    Offline step: load the ratings table, mean-centre, compute cosine
+    similarity between every pair of users that share >= MIN_OVERLAP games.
+    Returns a tall DataFrame: columns = [user_1, user_2, similarity]
+    """
+    import sqlite3, pandas as pd, numpy as np
+    from sklearn.metrics.pairwise import cosine_similarity
 
-#     conn = sqlite3.connect(DB_RATINGS)
-#     ratings = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
-#     conn.close()
+    conn = sqlite3.connect(DB_RATINGS)
+    ratings = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+    conn.close()
 
-#     # mean-centre ratings per user
-#     user_mean = ratings.groupby("username")["rating"].mean()
-#     ratings["rating_c"] = ratings["rating"] - ratings["username"].map(user_mean)
+    # mean-centre ratings per user
+    user_mean = ratings.groupby("username")["rating"].mean()
+    ratings["rating_c"] = ratings["rating"] - ratings["username"].map(user_mean)
 
-#     # pivot to user×game sparse matrix  (index = username, columns = game_id)
-#     pivot = ratings.pivot(index="username", columns="game_id", values="rating_c").fillna(0)
+    # pivot to user×game sparse matrix  (index = username, columns = game_id)
+    pivot = ratings.pivot(index="username", columns="game_id", values="rating_c").fillna(0)
 
-#     # cosine similarity matrix  (username × username)
-#     sim = cosine_similarity(pivot)
-#     sim = pd.DataFrame(sim, index=pivot.index, columns=pivot.index)
+    # cosine similarity matrix  (username × username)
+    sim = cosine_similarity(pivot)
+    sim = pd.DataFrame(sim, index=pivot.index, columns=pivot.index)
 
-#     # ----  overlap matrix (how many games each pair co-rated)  ----
-#     overlap = (pivot != 0).astype(int)
-#     overlap_counts = overlap @ overlap.T          # username × username
+    # ----  overlap matrix (how many games each pair co-rated)  ----
+    overlap = (pivot != 0).astype(int)
+    overlap_counts = overlap @ overlap.T          # username × username
 
-#     # convert to tall format
-#     sim_df = (sim.reset_index()
-#                  .melt(id_vars="username", var_name="other_user", value_name="similarity"))
-#     overlap_df = (overlap_counts.reset_index()
-#                                .melt(id_vars="username", var_name="other_user", value_name="overlap"))
+    # convert to tall format
+    sim_df = (sim.reset_index()
+                 .melt(id_vars="username", var_name="other_user", value_name="similarity"))
+    overlap_df = (overlap_counts.reset_index()
+                               .melt(id_vars="username", var_name="other_user", value_name="overlap"))
 
-#     # merge and filter
-#     sim_df = sim_df.merge(overlap_df, on=["username", "other_user"])
-#     sim_df = sim_df[sim_df["username"] != sim_df["other_user"]]          # drop self
-#     sim_df = sim_df[sim_df["overlap"] >= MIN_OVERLAP]
-#     sim_df = sim_df.sort_values(["username", "similarity"], ascending=[True, False])
+    # merge and filter
+    sim_df = sim_df.merge(overlap_df, on=["username", "other_user"])
+    sim_df = sim_df[sim_df["username"] != sim_df["other_user"]]          # drop self
+    sim_df = sim_df[sim_df["overlap"] >= MIN_OVERLAP]
+    sim_df = sim_df.sort_values(["username", "similarity"], ascending=[True, False])
 
-#     return sim_df[["username", "other_user", "similarity"]]
+    return sim_df[["username", "other_user", "similarity"]]
 
 
 
