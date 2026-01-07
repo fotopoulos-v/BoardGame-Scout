@@ -1229,7 +1229,7 @@ def get_user_ratings(username: str, db_ratings_path: str) -> pd.DataFrame:
         user_ratings = pd.DataFrame(bgg_ratings)[['game_id', 'rating']]
         
         # Optionally: save to database for next time
-        save_temp_user_to_db(username, bgg_ratings, db_ratings_path)
+        # save_temp_user_to_db(username, bgg_ratings, db_ratings_path)
         
         st.success(f"✅ Found {len(user_ratings)} ratings for {username}")
     
@@ -1380,41 +1380,6 @@ def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
 
 
 
-
-
-
-def debug_bgg_collection(username: str):
-    """Debug function to see the actual XML structure"""
-    url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
-    
-    headers = {
-        "User-Agent": "BoardGame-Scout/1.0",
-        "Accept": "application/xml",
-    }
-    
-    response = requests.get(url, headers=headers, timeout=30)
-    
-    if response.status_code == 202:
-        st.warning("Collection is queued. Wait a moment and try again.")
-        return
-    
-    if response.status_code != 200:
-        st.error(f"Error: {response.status_code}")
-        return
-    
-    # Show raw XML (first 2000 characters)
-    st.code(response.text[:2000], language="xml")
-    
-    # Try to parse and show structure
-    root = ET.fromstring(response.content)
-    items = root.findall("item")
-    
-    if items:
-        st.write(f"Found {len(items)} items")
-        # Show first item structure
-        first_item = items[0]
-        st.write("First item structure:")
-        st.code(ET.tostring(first_item, encoding='unicode')[:1000], language="xml")
 
 
 # ------------ EXTRA FOR RECOMMENDATION FOR ALL USERS --------- END ---------- #
