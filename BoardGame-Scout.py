@@ -1237,10 +1237,18 @@ def get_user_ratings(username: str, db_ratings_path: str) -> pd.DataFrame:
 
 
 def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
-    """Fetch ratings from BGG API (no authentication needed!)"""
+    """Fetch ratings from BGG API - requires authentication from server"""
     url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
     
+    # Get BGG token from secrets
+    bgg_token = st.secrets.get("BGG_TOKEN", "")
+    
+    if not bgg_token:
+        st.error("BGG_TOKEN is missing from secrets!")
+        return []
+    
     headers = {
+        "Authorization": f"Bearer {bgg_token}",  # ✅ ADD TOKEN
         "User-Agent": "BoardGame-Scout/1.0",
         "Accept": "application/xml",
     }
@@ -1248,36 +1256,34 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
     max_retries = 5
     for attempt in range(max_retries):
         try:
-            st.write(f"🔍 Attempt {attempt+1}: Fetching from BGG...")
             response = requests.get(url, headers=headers, timeout=30)
-            st.write(f"   Status code: {response.status_code}")
             
             if response.status_code == 202:
-                st.write(f"   Collection queued, waiting 5s...")
+                # BGG is queuing the request - wait longer
                 time.sleep(5)
                 continue
             
             if response.status_code == 429:
-                st.write(f"   Rate limited, waiting 10s...")
+                # Rate limited
                 time.sleep(10)
                 continue
             
+            if response.status_code == 401:
+                st.error("❌ BGG authentication failed. Check your BGG_TOKEN in secrets.")
+                return []
+            
             if response.status_code != 200:
-                st.write(f"   ❌ Unexpected status: {response.status_code}")
                 return []
             
             # Parse XML
-            st.write(f"   Parsing XML (length: {len(response.content)} bytes)...")
             root = ET.fromstring(response.content)
             items = root.findall("item")
-            st.write(f"   Found {len(items)} items in collection")
             
             if not items:
-                st.write(f"   ⚠️ No items found!")
                 return []
             
             ratings = []
-            for i, item in enumerate(items):
+            for item in items:
                 try:
                     game_id = item.attrib.get("objectid")
                     if not game_id:
@@ -1290,26 +1296,17 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
                     # Get stats/rating
                     stats = item.find("stats")
                     if stats is None:
-                        if i == 0:
-                            st.write(f"   Item {i}: No stats element")
                         continue
                     
                     rating_elem = stats.find("rating")
                     if rating_elem is None:
-                        if i == 0:
-                            st.write(f"   Item {i}: No rating element")
                         continue
                     
-                    # Get the "value" attribute
+                    # Get the "value" attribute from <rating value="5">
                     rating_value = rating_elem.get("value")
-                    
-                    if i == 0:
-                        st.write(f"   First item: {game_name}, rating_value='{rating_value}'")
                     
                     # Skip if no rating or N/A
                     if not rating_value or rating_value == "N/A":
-                        if i == 0:
-                            st.write(f"   First item: Skipped (no value or N/A)")
                         continue
                     
                     # Convert to float
@@ -1323,33 +1320,27 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
                             "rating": rating
                         })
                 
-                except (ValueError, TypeError, AttributeError) as e:
-                    if i == 0:
-                        st.write(f"   Item {i} parse error: {e}")
+                except (ValueError, TypeError, AttributeError):
                     continue
             
-            st.write(f"   ✅ Extracted {len(ratings)} valid ratings")
             return ratings
             
         except ET.ParseError as e:
-            st.write(f"   ❌ XML Parse Error: {e}")
             if attempt == max_retries - 1:
                 st.error(f"XML parsing error: {e}")
                 return []
             time.sleep(2)
             
         except Exception as e:
-            st.write(f"   ❌ Exception: {e}")
             if attempt == max_retries - 1:
                 st.error(f"Error fetching from BGG: {e}")
                 return []
             time.sleep(2)
     
-    st.write(f"   ❌ All {max_retries} attempts failed")
     return []
 
 
-    
+
 
 def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
     """
