@@ -1248,30 +1248,36 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
     max_retries = 5
     for attempt in range(max_retries):
         try:
+            st.write(f"🔍 Attempt {attempt+1}: Fetching from BGG...")
             response = requests.get(url, headers=headers, timeout=30)
+            st.write(f"   Status code: {response.status_code}")
             
             if response.status_code == 202:
-                # BGG is queuing the request - wait longer
+                st.write(f"   Collection queued, waiting 5s...")
                 time.sleep(5)
                 continue
             
             if response.status_code == 429:
-                # Rate limited
+                st.write(f"   Rate limited, waiting 10s...")
                 time.sleep(10)
                 continue
             
             if response.status_code != 200:
+                st.write(f"   ❌ Unexpected status: {response.status_code}")
                 return []
             
             # Parse XML
+            st.write(f"   Parsing XML (length: {len(response.content)} bytes)...")
             root = ET.fromstring(response.content)
             items = root.findall("item")
+            st.write(f"   Found {len(items)} items in collection")
             
             if not items:
+                st.write(f"   ⚠️ No items found!")
                 return []
             
             ratings = []
-            for item in items:
+            for i, item in enumerate(items):
                 try:
                     game_id = item.attrib.get("objectid")
                     if not game_id:
@@ -1281,20 +1287,29 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
                     name_elem = item.find("name")
                     game_name = name_elem.text if name_elem is not None else "Unknown"
                     
-                    # Get stats/rating - THIS IS THE KEY PART
+                    # Get stats/rating
                     stats = item.find("stats")
                     if stats is None:
+                        if i == 0:
+                            st.write(f"   Item {i}: No stats element")
                         continue
                     
                     rating_elem = stats.find("rating")
                     if rating_elem is None:
+                        if i == 0:
+                            st.write(f"   Item {i}: No rating element")
                         continue
                     
-                    # ✅ FIX: Get the "value" attribute from <rating value="5">
+                    # Get the "value" attribute
                     rating_value = rating_elem.get("value")
+                    
+                    if i == 0:
+                        st.write(f"   First item: {game_name}, rating_value='{rating_value}'")
                     
                     # Skip if no rating or N/A
                     if not rating_value or rating_value == "N/A":
+                        if i == 0:
+                            st.write(f"   First item: Skipped (no value or N/A)")
                         continue
                     
                     # Convert to float
@@ -1309,24 +1324,32 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
                         })
                 
                 except (ValueError, TypeError, AttributeError) as e:
-                    # Skip this item if parsing fails
+                    if i == 0:
+                        st.write(f"   Item {i} parse error: {e}")
                     continue
             
+            st.write(f"   ✅ Extracted {len(ratings)} valid ratings")
             return ratings
             
         except ET.ParseError as e:
+            st.write(f"   ❌ XML Parse Error: {e}")
             if attempt == max_retries - 1:
                 st.error(f"XML parsing error: {e}")
                 return []
             time.sleep(2)
             
         except Exception as e:
+            st.write(f"   ❌ Exception: {e}")
             if attempt == max_retries - 1:
                 st.error(f"Error fetching from BGG: {e}")
                 return []
             time.sleep(2)
     
+    st.write(f"   ❌ All {max_retries} attempts failed")
     return []
+
+
+    
 
 def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
     """
