@@ -1610,6 +1610,7 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     recs = recs.head(n)
     
     # 7. build a short textual reason
+    top_neigh = neighbours.head(5)
     reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
     recs["reason"] = reason
     
