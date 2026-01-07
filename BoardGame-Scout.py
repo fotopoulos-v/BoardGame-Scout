@@ -1251,24 +1251,16 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
             response = requests.get(url, headers=headers, timeout=30)
             
             if response.status_code == 202:
-                # BGG is queuing the request
-                print(f"  Attempt {attempt+1}: Collection queued, waiting...")
-                time.sleep(5)  # Increased wait time
+                # BGG is queuing the request - wait longer
+                time.sleep(5)
                 continue
             
             if response.status_code == 429:
                 # Rate limited
-                print(f"  Attempt {attempt+1}: Rate limited, waiting...")
                 time.sleep(10)
                 continue
             
-            if response.status_code == 400:
-                # Bad username
-                print(f"  User '{username}' not found (400)")
-                return []
-            
             if response.status_code != 200:
-                print(f"  Unexpected status: {response.status_code}")
                 return []
             
             # Parse XML
@@ -1276,79 +1268,65 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
             items = root.findall("item")
             
             if not items:
-                print(f"  No items found in collection")
                 return []
-            
-            print(f"  Found {len(items)} items in collection")
             
             ratings = []
             for item in items:
-                game_id = item.attrib.get("objectid")
-                
-                # Get game name
-                name_elem = item.find("name")
-                game_name = name_elem.text if name_elem is not None else "Unknown"
-                
-                # Get stats
-                stats = item.find("stats")
-                if stats is None:
-                    continue
-                
-                # Get rating - check the CORRECT location
-                rating_elem = stats.find("rating")
-                if rating_elem is None:
-                    continue
-                
-                # ✅ FIX: Rating value is in the "value" attribute of <rating>
-                # BUT for user ratings, it's actually the attribute of the <rating> tag itself
-                value = rating_elem.attrib.get("value")
-                
-                # If not found there, try the <value> child element
-                if not value or value == "N/A":
-                    value_elem = rating_elem.find("value")
-                    if value_elem is not None:
-                        value = value_elem.attrib.get("value")
-                        if not value:
-                            value = value_elem.text
-                
-                # Debug: Print first rating found
-                if len(ratings) == 0:
-                    print(f"  First game: {game_name}, rating value: {value}")
-                
-                if not value or value == "N/A":
-                    continue
-                
                 try:
-                    rating = float(value)
+                    game_id = item.attrib.get("objectid")
+                    if not game_id:
+                        continue
+                    
+                    # Get game name
+                    name_elem = item.find("name")
+                    game_name = name_elem.text if name_elem is not None else "Unknown"
+                    
+                    # Get stats/rating - THIS IS THE KEY PART
+                    stats = item.find("stats")
+                    if stats is None:
+                        continue
+                    
+                    rating_elem = stats.find("rating")
+                    if rating_elem is None:
+                        continue
+                    
+                    # ✅ FIX: Get the "value" attribute from <rating value="5">
+                    rating_value = rating_elem.get("value")
+                    
+                    # Skip if no rating or N/A
+                    if not rating_value or rating_value == "N/A":
+                        continue
+                    
+                    # Convert to float
+                    rating = float(rating_value)
+                    
+                    # Only include actual ratings (skip 0)
                     if rating > 0:
                         ratings.append({
                             "game_id": int(game_id),
                             "game_name": game_name,
                             "rating": rating
                         })
-                except (ValueError, TypeError) as e:
-                    print(f"  Failed to parse rating for {game_name}: {value} ({e})")
+                
+                except (ValueError, TypeError, AttributeError) as e:
+                    # Skip this item if parsing fails
                     continue
             
-            print(f"  Extracted {len(ratings)} valid ratings")
             return ratings
             
         except ET.ParseError as e:
-            print(f"  XML Parse Error: {e}")
             if attempt == max_retries - 1:
                 st.error(f"XML parsing error: {e}")
                 return []
             time.sleep(2)
             
         except Exception as e:
-            print(f"  Error on attempt {attempt+1}: {e}")
             if attempt == max_retries - 1:
                 st.error(f"Error fetching from BGG: {e}")
                 return []
             time.sleep(2)
     
     return []
-
 
 def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
     """
@@ -1387,6 +1365,42 @@ def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
 
 
 
+
+
+
+
+def debug_bgg_collection(username: str):
+    """Debug function to see the actual XML structure"""
+    url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
+    
+    headers = {
+        "User-Agent": "BoardGame-Scout/1.0",
+        "Accept": "application/xml",
+    }
+    
+    response = requests.get(url, headers=headers, timeout=30)
+    
+    if response.status_code == 202:
+        st.warning("Collection is queued. Wait a moment and try again.")
+        return
+    
+    if response.status_code != 200:
+        st.error(f"Error: {response.status_code}")
+        return
+    
+    # Show raw XML (first 2000 characters)
+    st.code(response.text[:2000], language="xml")
+    
+    # Try to parse and show structure
+    root = ET.fromstring(response.content)
+    items = root.findall("item")
+    
+    if items:
+        st.write(f"Found {len(items)} items")
+        # Show first item structure
+        first_item = items[0]
+        st.write("First item structure:")
+        st.code(ET.tostring(first_item, encoding='unicode')[:1000], language="xml")
 
 
 # ------------ EXTRA FOR RECOMMENDATION FOR ALL USERS --------- END ---------- #
