@@ -1252,38 +1252,69 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
             
             if response.status_code == 202:
                 # BGG is queuing the request
-                time.sleep(3)
+                print(f"  Attempt {attempt+1}: Collection queued, waiting...")
+                time.sleep(5)  # Increased wait time
                 continue
             
             if response.status_code == 429:
                 # Rate limited
+                print(f"  Attempt {attempt+1}: Rate limited, waiting...")
                 time.sleep(10)
                 continue
             
-            if response.status_code != 200:
+            if response.status_code == 400:
+                # Bad username
+                print(f"  User '{username}' not found (400)")
                 return []
             
+            if response.status_code != 200:
+                print(f"  Unexpected status: {response.status_code}")
+                return []
+            
+            # Parse XML
             root = ET.fromstring(response.content)
             items = root.findall("item")
             
             if not items:
+                print(f"  No items found in collection")
                 return []
+            
+            print(f"  Found {len(items)} items in collection")
             
             ratings = []
             for item in items:
                 game_id = item.attrib.get("objectid")
+                
+                # Get game name
                 name_elem = item.find("name")
                 game_name = name_elem.text if name_elem is not None else "Unknown"
                 
+                # Get stats
                 stats = item.find("stats")
                 if stats is None:
                     continue
                 
+                # Get rating - check the CORRECT location
                 rating_elem = stats.find("rating")
                 if rating_elem is None:
                     continue
                 
+                # ✅ FIX: Rating value is in the "value" attribute of <rating>
+                # BUT for user ratings, it's actually the attribute of the <rating> tag itself
                 value = rating_elem.attrib.get("value")
+                
+                # If not found there, try the <value> child element
+                if not value or value == "N/A":
+                    value_elem = rating_elem.find("value")
+                    if value_elem is not None:
+                        value = value_elem.attrib.get("value")
+                        if not value:
+                            value = value_elem.text
+                
+                # Debug: Print first rating found
+                if len(ratings) == 0:
+                    print(f"  First game: {game_name}, rating value: {value}")
+                
                 if not value or value == "N/A":
                     continue
                 
@@ -1295,12 +1326,22 @@ def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
                             "game_name": game_name,
                             "rating": rating
                         })
-                except (ValueError, TypeError):
+                except (ValueError, TypeError) as e:
+                    print(f"  Failed to parse rating for {game_name}: {value} ({e})")
                     continue
             
+            print(f"  Extracted {len(ratings)} valid ratings")
             return ratings
             
+        except ET.ParseError as e:
+            print(f"  XML Parse Error: {e}")
+            if attempt == max_retries - 1:
+                st.error(f"XML parsing error: {e}")
+                return []
+            time.sleep(2)
+            
         except Exception as e:
+            print(f"  Error on attempt {attempt+1}: {e}")
             if attempt == max_retries - 1:
                 st.error(f"Error fetching from BGG: {e}")
                 return []
