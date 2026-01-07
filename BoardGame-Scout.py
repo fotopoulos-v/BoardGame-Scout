@@ -1194,81 +1194,322 @@ if search_clicked:
 
 
 # ========== USER-BASED COLLABORATIVE FILTERING ==========
-db_mtime = os.path.getmtime(DB_RATINGS)
-@st.cache_data(show_spinner=False)
-def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
-    """
-    Offline step: load the ratings table, mean-centre, compute cosine
-    similarity between every pair of users that share >= MIN_OVERLAP games.
-    Returns a tall DataFrame: columns = [user_1, user_2, similarity]
-    """
-    import sqlite3, pandas as pd, numpy as np
-    from sklearn.metrics.pairwise import cosine_similarity
 
-    conn = sqlite3.connect(DB_RATINGS)
-    ratings = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+
+
+# ------------ EXTRA FOR RECOMMENDATION FOR ALL USERS --------- START ---------- #
+
+def get_user_ratings(username: str, db_ratings_path: str) -> pd.DataFrame:
+    """
+    Get user ratings from database, or fetch from BGG if not found.
+    Returns DataFrame with columns: game_id, rating
+    """
+    conn = sqlite3.connect(db_ratings_path)
+    
+    # Try to get from database first
+    user_ratings = pd.read_sql(
+        "SELECT game_id, rating FROM ratings WHERE username = ?",
+        conn,
+        params=(username,)
+    )
     conn.close()
-
-    # mean-centre ratings per user
-    user_mean = ratings.groupby("username")["rating"].mean()
-    ratings["rating_c"] = ratings["rating"] - ratings["username"].map(user_mean)
-
-    # pivot to user×game sparse matrix  (index = username, columns = game_id)
-    pivot = ratings.pivot(index="username", columns="game_id", values="rating_c").fillna(0)
-
-    # cosine similarity matrix  (username × username)
-    sim = cosine_similarity(pivot)
-    sim = pd.DataFrame(sim, index=pivot.index, columns=pivot.index)
-
-    # ----  overlap matrix (how many games each pair co-rated)  ----
-    overlap = (pivot != 0).astype(int)
-    overlap_counts = overlap @ overlap.T          # username × username
-
-    # convert to tall format
-    sim_df = (sim.reset_index()
-                 .melt(id_vars="username", var_name="other_user", value_name="similarity"))
-    overlap_df = (overlap_counts.reset_index()
-                               .melt(id_vars="username", var_name="other_user", value_name="overlap"))
-
-    # merge and filter
-    sim_df = sim_df.merge(overlap_df, on=["username", "other_user"])
-    sim_df = sim_df[sim_df["username"] != sim_df["other_user"]]          # drop self
-    sim_df = sim_df[sim_df["overlap"] >= MIN_OVERLAP]
-    sim_df = sim_df.sort_values(["username", "similarity"], ascending=[True, False])
-
-    return sim_df[["username", "other_user", "similarity"]]
+    
+    # If user not in database, fetch from BGG
+    if user_ratings.empty:
+        st.info(f"🔍 User '{username}' not in Greek guild - fetching ratings from BGG...")
+        
+        with st.spinner("Fetching your ratings from BoardGameGeek..."):
+            bgg_ratings = fetch_user_ratings_from_bgg(username)
+        
+        if not bgg_ratings:
+            st.error(f"❌ Could not find ratings for user '{username}'. Please check the username.")
+            return pd.DataFrame()
+        
+        # Convert to DataFrame
+        user_ratings = pd.DataFrame(bgg_ratings)[['game_id', 'rating']]
+        
+        # Optionally: save to database for next time
+        save_temp_user_to_db(username, bgg_ratings, db_ratings_path)
+        
+        st.success(f"✅ Found {len(user_ratings)} ratings for {username}")
+    
+    return user_ratings
 
 
+def fetch_user_ratings_from_bgg(username: str) -> List[Dict]:
+    """Fetch ratings from BGG API (no authentication needed!)"""
+    url = f"https://boardgamegeek.com/xmlapi2/collection?username={username}&rated=1&stats=1&subtype=boardgame"
+    
+    headers = {
+        "User-Agent": "BoardGame-Scout/1.0",
+        "Accept": "application/xml",
+    }
+    
+    max_retries = 5
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url, headers=headers, timeout=30)
+            
+            if response.status_code == 202:
+                # BGG is queuing the request
+                time.sleep(3)
+                continue
+            
+            if response.status_code == 429:
+                # Rate limited
+                time.sleep(10)
+                continue
+            
+            if response.status_code != 200:
+                return []
+            
+            root = ET.fromstring(response.content)
+            items = root.findall("item")
+            
+            if not items:
+                return []
+            
+            ratings = []
+            for item in items:
+                game_id = item.attrib.get("objectid")
+                name_elem = item.find("name")
+                game_name = name_elem.text if name_elem is not None else "Unknown"
+                
+                stats = item.find("stats")
+                if stats is None:
+                    continue
+                
+                rating_elem = stats.find("rating")
+                if rating_elem is None:
+                    continue
+                
+                value = rating_elem.attrib.get("value")
+                if not value or value == "N/A":
+                    continue
+                
+                try:
+                    rating = float(value)
+                    if rating > 0:
+                        ratings.append({
+                            "game_id": int(game_id),
+                            "game_name": game_name,
+                            "rating": rating
+                        })
+                except (ValueError, TypeError):
+                    continue
+            
+            return ratings
+            
+        except Exception as e:
+            if attempt == max_retries - 1:
+                st.error(f"Error fetching from BGG: {e}")
+                return []
+            time.sleep(2)
+    
+    return []
 
+
+def save_temp_user_to_db(username: str, ratings: List[Dict], db_path: str):
+    """
+    Save non-guild user to database temporarily.
+    Mark with special date so they can be cleaned up later.
+    """
+    conn = sqlite3.connect(db_path, timeout=30.0)
+    cursor = conn.cursor()
+    
+    try:
+        current_time = datetime.now().isoformat()
+        
+        # Delete existing ratings
+        cursor.execute("DELETE FROM ratings WHERE username = ?", (username,))
+        
+        # Insert ratings
+        for rating_data in ratings:
+            cursor.execute("""
+                INSERT INTO ratings (username, game_id, game_name, rating, date_updated)
+                VALUES (?, ?, ?, ?, ?)
+            """, (username, rating_data['game_id'], rating_data['game_name'], 
+                  rating_data['rating'], current_time))
+        
+        # Add to users_tracking with special marker
+        cursor.execute("""
+            INSERT OR REPLACE INTO users_tracking (username, date_updated, ratings_count)
+            VALUES (?, ?, ?)
+        """, (username, current_time, len(ratings)))
+        
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        st.warning(f"Could not cache ratings: {e}")
+    finally:
+        conn.close()
+
+
+
+
+
+# ------------ EXTRA FOR RECOMMENDATION FOR ALL USERS --------- END ---------- #
+
+
+
+
+
+
+
+# db_mtime = os.path.getmtime(DB_RATINGS)
+# @st.cache_data(show_spinner=False)
+# def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
+#     """
+#     Offline step: load the ratings table, mean-centre, compute cosine
+#     similarity between every pair of users that share >= MIN_OVERLAP games.
+#     Returns a tall DataFrame: columns = [user_1, user_2, similarity]
+#     """
+#     import sqlite3, pandas as pd, numpy as np
+#     from sklearn.metrics.pairwise import cosine_similarity
+
+#     conn = sqlite3.connect(DB_RATINGS)
+#     ratings = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+#     conn.close()
+
+#     # mean-centre ratings per user
+#     user_mean = ratings.groupby("username")["rating"].mean()
+#     ratings["rating_c"] = ratings["rating"] - ratings["username"].map(user_mean)
+
+#     # pivot to user×game sparse matrix  (index = username, columns = game_id)
+#     pivot = ratings.pivot(index="username", columns="game_id", values="rating_c").fillna(0)
+
+#     # cosine similarity matrix  (username × username)
+#     sim = cosine_similarity(pivot)
+#     sim = pd.DataFrame(sim, index=pivot.index, columns=pivot.index)
+
+#     # ----  overlap matrix (how many games each pair co-rated)  ----
+#     overlap = (pivot != 0).astype(int)
+#     overlap_counts = overlap @ overlap.T          # username × username
+
+#     # convert to tall format
+#     sim_df = (sim.reset_index()
+#                  .melt(id_vars="username", var_name="other_user", value_name="similarity"))
+#     overlap_df = (overlap_counts.reset_index()
+#                                .melt(id_vars="username", var_name="other_user", value_name="overlap"))
+
+#     # merge and filter
+#     sim_df = sim_df.merge(overlap_df, on=["username", "other_user"])
+#     sim_df = sim_df[sim_df["username"] != sim_df["other_user"]]          # drop self
+#     sim_df = sim_df[sim_df["overlap"] >= MIN_OVERLAP]
+#     sim_df = sim_df.sort_values(["username", "similarity"], ascending=[True, False])
+
+#     return sim_df[["username", "other_user", "similarity"]]
+
+
+
+
+# @st.cache_data(show_spinner=False)
+# def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
+#     """
+#     Produce recommendations for a *single* username.
+#     Returns DataFrame with columns:
+#     [game_id, title, predicted_rating, avg_greek_rating, reason]
+#     ready for st.dataframe.
+#     """
+#     import sqlite3, pandas as pd, numpy as np
+    
+#     # 1. load similarity matrix (already cached)
+#     sim_df = build_user_similarity_matrix(db_mtime)
+#     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+#     if neighbours.empty:
+#         return pd.DataFrame()   # not enough neighbours
+    
+#     # 2. load active user ratings + all Greek ratings
+#     conn = sqlite3.connect(DB_RATINGS)
+#     user_rates = pd.read_sql("SELECT game_id, rating FROM ratings WHERE username = ?", conn, params=(username,))
+#     all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+#     conn.close()
+    
+#     seen = set(user_rates["game_id"].tolist())
+    
+#     # 3. build neighbourhood rating matrix (only games not seen by active user)
+#     neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
+    
+#     # 4. aggregate neighbour scores (weighted average by similarity)
+#     neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
+#     neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
+#     recs = (neigh_rates.groupby(["game_id"])
+#                            .agg(w_sum=("weighted", "sum"),
+#                                 sim_sum=("similarity", "sum"),
+#                                 count=("rating", "count"))
+#                            .reset_index())
+#     recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
+#     recs["pred"] = recs["w_sum"] / recs["sim_sum"]
+#     recs = recs.sort_values("pred", ascending=False).head(n * 3)  # ← Get 3x more to compensate for filtering
+    
+#     # 5. enrich with game titles + average Greek rating + FILTER OUT EXPANSIONS
+#     conn_bg = sqlite3.connect("boardgames.db")
+    
+#     # ← CHANGED: Fetch categories column and filter out expansions
+#     titles = pd.read_sql("""
+#         SELECT id, title, categories 
+#         FROM games
+#         WHERE categories NOT LIKE '%Expansion for Base-game%' OR categories IS NULL
+#     """, conn_bg)
+    
+#     greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
+#     conn_bg.close()
+    
+#     recs = recs.merge(titles, left_on="game_id", right_on="id", how="inner")  # ← Changed to 'inner' to exclude expansions
+#     recs = recs.merge(greek_avg, on="game_id", how="left")
+#     recs["avg_greek"] = recs["avg_greek"].round(2)
+    
+#     # ← After filtering, take only the top N
+#     recs = recs.head(n)
+    
+#     # 6. build a short textual reason
+#     top_neigh = neighbours.head(5)
+#     reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
+#     recs["reason"] = reason
+
+    
+#     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
 
 @st.cache_data(show_spinner=False)
 def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     """
     Produce recommendations for a *single* username.
+    Fetches from BGG if user not in database.
     Returns DataFrame with columns:
     [game_id, title, predicted_rating, avg_greek_rating, reason]
     ready for st.dataframe.
     """
     import sqlite3, pandas as pd, numpy as np
     
-    # 1. load similarity matrix (already cached)
+    # 1. Get user ratings (from DB or fetch from BGG)
+    user_rates = get_user_ratings(username, DB_RATINGS)
+    
+    if user_rates.empty:
+        return pd.DataFrame()  # No ratings found
+    
+    # 2. load similarity matrix (already cached)
     sim_df = build_user_similarity_matrix(db_mtime)
     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
-    if neighbours.empty:
-        return pd.DataFrame()   # not enough neighbours
     
-    # 2. load active user ratings + all Greek ratings
+    # If user not in similarity matrix (new user), compute similarities on-the-fly
+    if neighbours.empty:
+        st.info("Computing similarities with Greek guild users...")
+        neighbours = compute_user_similarities_realtime(username, user_rates, DB_RATINGS)
+        
+        if neighbours.empty:
+            return pd.DataFrame()  # Still no neighbours found
+    
+    # 3. load all Greek ratings
     conn = sqlite3.connect(DB_RATINGS)
-    user_rates = pd.read_sql("SELECT game_id, rating FROM ratings WHERE username = ?", conn, params=(username,))
     all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
     conn.close()
     
     seen = set(user_rates["game_id"].tolist())
     
-    # 3. build neighbourhood rating matrix (only games not seen by active user)
+    # 4. build neighbourhood rating matrix (only games not seen by active user)
     neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
     
-    # 4. aggregate neighbour scores (weighted average by similarity)
+    # 5. aggregate neighbour scores (weighted average by similarity)
     neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
     neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
     recs = (neigh_rates.groupby(["game_id"])
@@ -1278,12 +1519,11 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
                            .reset_index())
     recs = recs[recs["count"] >= 3]                    # at least 3 neighbours rated it
     recs["pred"] = recs["w_sum"] / recs["sim_sum"]
-    recs = recs.sort_values("pred", ascending=False).head(n * 3)  # ← Get 3x more to compensate for filtering
+    recs = recs.sort_values("pred", ascending=False).head(n * 3)  # Get 3x more to compensate for filtering
     
-    # 5. enrich with game titles + average Greek rating + FILTER OUT EXPANSIONS
+    # 6. enrich with game titles + average Greek rating + FILTER OUT EXPANSIONS
     conn_bg = sqlite3.connect("boardgames.db")
     
-    # ← CHANGED: Fetch categories column and filter out expansions
     titles = pd.read_sql("""
         SELECT id, title, categories 
         FROM games
@@ -1293,20 +1533,90 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
     conn_bg.close()
     
-    recs = recs.merge(titles, left_on="game_id", right_on="id", how="inner")  # ← Changed to 'inner' to exclude expansions
+    recs = recs.merge(titles, left_on="game_id", right_on="id", how="inner")
     recs = recs.merge(greek_avg, on="game_id", how="left")
     recs["avg_greek"] = recs["avg_greek"].round(2)
     
-    # ← After filtering, take only the top N
+    # After filtering, take only the top N
     recs = recs.head(n)
     
-    # 6. build a short textual reason
-    top_neigh = neighbours.head(5)
-    reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
+    # 7. build a short textual reason
+    reason = f"Loved by top Greek users similar to you"
     recs["reason"] = reason
-
     
     return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
+
+
+def compute_user_similarities_realtime(username: str, user_rates: pd.DataFrame, db_path: str) -> pd.DataFrame:
+    """
+    Compute similarities between a user (not in DB) and all Greek guild users.
+    Returns DataFrame with columns: [username, other_user, similarity]
+    """
+    import numpy as np
+    from sklearn.metrics.pairwise import cosine_similarity
+    
+    conn = sqlite3.connect(db_path)
+    all_ratings = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+    conn.close()
+    
+    # Get user's mean rating
+    user_mean = user_rates["rating"].mean()
+    user_rates["rating_c"] = user_rates["rating"] - user_mean
+    
+    # Get all other users' mean-centered ratings
+    other_user_means = all_ratings.groupby("username")["rating"].mean()
+    all_ratings["rating_c"] = all_ratings["rating"] - all_ratings["username"].map(other_user_means)
+    
+    # Find users with overlapping games
+    user_games = set(user_rates["game_id"].tolist())
+    
+    similarities = []
+    for other_user in all_ratings["username"].unique():
+        other_rates = all_ratings[all_ratings["username"] == other_user]
+        other_games = set(other_rates["game_id"].tolist())
+        
+        # Check overlap
+        overlap = user_games.intersection(other_games)
+        if len(overlap) < MIN_OVERLAP:
+            continue
+        
+        # Get common ratings
+        user_common = user_rates[user_rates["game_id"].isin(overlap)].sort_values("game_id")
+        other_common = other_rates[other_rates["game_id"].isin(overlap)].sort_values("game_id")
+        
+        if len(user_common) != len(other_common):
+            continue
+        
+        # Compute correlation/similarity
+        user_vec = user_common["rating_c"].values.reshape(1, -1)
+        other_vec = other_common["rating_c"].values.reshape(1, -1)
+        
+        # Avoid division by zero
+        if np.std(user_vec) == 0 or np.std(other_vec) == 0:
+            continue
+        
+        similarity = cosine_similarity(user_vec, other_vec)[0, 0]
+        
+        if similarity > 0:
+            similarities.append({
+                "username": username,
+                "other_user": other_user,
+                "similarity": similarity
+            })
+    
+    if not similarities:
+        return pd.DataFrame()
+    
+    sim_df = pd.DataFrame(similarities)
+    sim_df = sim_df.sort_values("similarity", ascending=False)
+    
+    return sim_df
+
+
+
+
+
+
 
 
 
@@ -1383,53 +1693,89 @@ if st.session_state.get("show_user_section", False):
         recommend_clicked = st.button("Recommended for you!", key="rec_btn")
 
     # ---------- logic ----------
+    # if recommend_clicked:
+    #     if not username:
+    #         st.error("Please enter a username.")
+    #     else:
+    #         st.session_state["user_sub_view"] = "recommendations"   # ← mark active view
+    #         with st.spinner("Building your personal Greek-guild top list..."):
+    #             conn = sqlite3.connect(DB_RATINGS)
+    #             check = pd.read_sql(
+    #                 "SELECT COUNT(*) c FROM ratings WHERE username = ?",
+    #                 conn,
+    #                 params=(username,)
+    #             )
+    #             conn.close()
+
+    #             st.write("Greek DB ratings count:", int(check["c"].iloc[0]))
+    #             rec_df = recommend_games(username, RECOMMEND_COUNT)
+    #             st.session_state["rec_df"] = rec_df          # ← store DF under expected key
+            
+    #         if rec_df.empty:
+    #             # Get more detailed diagnostics
+    #             import sqlite3
+    #             conn = sqlite3.connect(DB_RATINGS)
+    #             user_ratings_count = pd.read_sql(
+    #                 "SELECT COUNT(*) as count FROM ratings WHERE username = ?", 
+    #                 conn, 
+    #                 params=(username,)
+    #             )["count"].iloc[0]
+    #             conn.close()
+                
+    #             sim_df = build_user_similarity_matrix()
+    #             neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+    #             num_neighbours = len(neighbours)
+                
+    #             # Provide specific feedback based on what failed
+    #             if user_ratings_count == 0:
+    #                 st.warning(f"⚠️ No ratings found for username '{username}'. Please rate some games on BoardGameGeek first.")
+    #             elif user_ratings_count < 5:
+    #                 st.warning(f"⚠️ You have only {user_ratings_count} rated game{'s' if user_ratings_count != 1 else ''}. Please rate at least 5 games to get recommendations.")
+    #             elif num_neighbours == 0:
+    #                 st.warning(f"⚠️ Not enough similar Greek users found. You have {user_ratings_count} ratings, but they don't overlap enough with other Greek users. Try rating more popular games that Greek gamers have also rated (need at least {MIN_OVERLAP} games in common with other users).")
+    #             elif num_neighbours < 5:
+    #                 st.warning(f"⚠️ Only found {num_neighbours} similar Greek user{'s' if num_neighbours != 1 else ''}, not enough for reliable recommendations. Try rating more games to find more neighbors.")
+    #             else:
+    #                 st.warning(f"⚠️ Unable to generate recommendations. You have {user_ratings_count} ratings and {num_neighbours} similar users, but not enough overlap on unrated games. Try rating more diverse games.")
+    #         else:
+    #             st.success(f"🎯 Here are {len(rec_df)} games you might love!")
+    
+
+
     if recommend_clicked:
         if not username:
             st.error("Please enter a username.")
         else:
-            st.session_state["user_sub_view"] = "recommendations"   # ← mark active view
-            with st.spinner("Building your personal Greek-guild top list..."):
+            st.session_state["user_sub_view"] = "recommendations"
+            
+            with st.spinner("Building your personal recommendations..."):
+                rec_df = recommend_games(username, RECOMMEND_COUNT)
+                st.session_state["rec_df"] = rec_df
+            
+            if rec_df.empty:
+                # Get diagnostics
                 conn = sqlite3.connect(DB_RATINGS)
-                check = pd.read_sql(
-                    "SELECT COUNT(*) c FROM ratings WHERE username = ?",
+                # Check if user exists in DB (might have been just added)
+                user_check = pd.read_sql(
+                    "SELECT COUNT(*) as count FROM ratings WHERE username = ?",
                     conn,
                     params=(username,)
                 )
-                conn.close()
-
-                st.write("Greek DB ratings count:", int(check["c"].iloc[0]))
-                rec_df = recommend_games(username, RECOMMEND_COUNT)
-                st.session_state["rec_df"] = rec_df          # ← store DF under expected key
-            
-            if rec_df.empty:
-                # Get more detailed diagnostics
-                import sqlite3
-                conn = sqlite3.connect(DB_RATINGS)
-                user_ratings_count = pd.read_sql(
-                    "SELECT COUNT(*) as count FROM ratings WHERE username = ?", 
-                    conn, 
-                    params=(username,)
-                )["count"].iloc[0]
+                user_ratings_count = user_check["count"].iloc[0]
                 conn.close()
                 
-                sim_df = build_user_similarity_matrix()
-                neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
-                num_neighbours = len(neighbours)
-                
-                # Provide specific feedback based on what failed
                 if user_ratings_count == 0:
-                    st.warning(f"⚠️ No ratings found for username '{username}'. Please rate some games on BoardGameGeek first.")
-                elif user_ratings_count < 5:
-                    st.warning(f"⚠️ You have only {user_ratings_count} rated game{'s' if user_ratings_count != 1 else ''}. Please rate at least 5 games to get recommendations.")
-                elif num_neighbours == 0:
-                    st.warning(f"⚠️ Not enough similar Greek users found. You have {user_ratings_count} ratings, but they don't overlap enough with other Greek users. Try rating more popular games that Greek gamers have also rated (need at least {MIN_OVERLAP} games in common with other users).")
-                elif num_neighbours < 5:
-                    st.warning(f"⚠️ Only found {num_neighbours} similar Greek user{'s' if num_neighbours != 1 else ''}, not enough for reliable recommendations. Try rating more games to find more neighbors.")
+                    st.warning(f"⚠️ No ratings found for username '{username}'. Please check the username or rate some games on BoardGameGeek first.")
+                elif user_ratings_count < MIN_OVERLAP:
+                    st.warning(f"⚠️ You have {user_ratings_count} ratings, but need at least {MIN_OVERLAP} games that overlap with Greek guild users. Try rating more popular games.")
                 else:
-                    st.warning(f"⚠️ Unable to generate recommendations. You have {user_ratings_count} ratings and {num_neighbours} similar users, but not enough overlap on unrated games. Try rating more diverse games.")
+                    st.warning(f"⚠️ Unable to generate recommendations. You have {user_ratings_count} ratings but not enough similar users found.")
             else:
                 st.success(f"🎯 Here are {len(rec_df)} games you might love!")
-    
+
+
+
+
     # Map display names to API flags
     flag_map = {
         "Owned Games": "own",
