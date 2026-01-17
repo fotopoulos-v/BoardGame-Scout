@@ -1533,16 +1533,50 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
         if neighbours.empty:
             return pd.DataFrame()  # Still no neighbours found
     
+    # # 3. load all Greek ratings
+    # conn = sqlite3.connect(DB_RATINGS)
+    # all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+    # conn.close()
+    
+    # seen = set(user_rates["game_id"].tolist())
+    
+    # # 4. build neighbourhood rating matrix (only games not seen by active user)
+    # neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
+
+
+
     # 3. load all Greek ratings
     conn = sqlite3.connect(DB_RATINGS)
-    all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
+    all_rates = pd.read_sql(
+        "SELECT username, game_id, rating FROM ratings",
+        conn
+    )
     conn.close()
-    
+
     seen = set(user_rates["game_id"].tolist())
-    
-    # 4. build neighbourhood rating matrix (only games not seen by active user)
-    neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
-    
+
+    # ---- NEW: exclude expansions EARLY ----
+    conn_bg = sqlite3.connect("boardgames.db")
+    base_games = pd.read_sql("""
+        SELECT id
+        FROM games
+        WHERE categories NOT LIKE '%Expansion for Base-game%'
+        OR categories IS NULL
+    """, conn_bg)
+    conn_bg.close()
+
+    base_game_ids = set(base_games["id"].tolist())
+
+    # 4. neighbourhood ratings (base games only, unseen by user)
+    neigh_rates = all_rates[
+        all_rates["username"].isin(neighbours["other_user"]) &
+        ~all_rates["game_id"].isin(seen) &
+        all_rates["game_id"].isin(base_game_ids)
+    ]
+
+
+
+
     # 5. aggregate neighbour scores (weighted average by similarity)
     neigh_rates = neigh_rates.merge(neighbours, left_on="username", right_on="other_user")
     neigh_rates["weighted"] = neigh_rates["rating"] * neigh_rates["similarity"]
@@ -1558,11 +1592,15 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     # 6. enrich with game titles + average Greek rating + FILTER OUT EXPANSIONS
     conn_bg = sqlite3.connect("boardgames.db")
     
-    titles = pd.read_sql("""
-        SELECT id, title, categories 
-        FROM games
-        WHERE categories NOT LIKE '%Expansion for Base-game%' OR categories IS NULL
-    """, conn_bg)
+    # titles = pd.read_sql("""
+    #     SELECT id, title, categories 
+    #     FROM games
+    #     WHERE categories NOT LIKE '%Expansion for Base-game%' OR categories IS NULL
+    # """, conn_bg)
+    titles = pd.read_sql(
+    "SELECT id, title FROM games",
+    sqlite3.connect("boardgames.db")
+    )
     
     greek_avg = pd.read_sql("SELECT game_id, AVG(rating) avg_greek FROM ratings GROUP BY game_id", sqlite3.connect(DB_RATINGS))
     conn_bg.close()
