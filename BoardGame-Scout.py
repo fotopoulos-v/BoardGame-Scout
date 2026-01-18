@@ -1437,34 +1437,6 @@ def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-# def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
-#     """
-#     Produce recommendations for a *single* username.
-#     Fetches from BGG if user not in database.
-#     Returns DataFrame with columns:
-#     [game_id, title, predicted_rating, avg_greek_rating, reason]
-#     ready for st.dataframe.
-#     """
-#     import sqlite3, pandas as pd, numpy as np
-    
-#     # 1. Get user ratings (from DB or fetch from BGG)
-#     user_rates = get_user_ratings(username, DB_RATINGS)
-    
-#     if user_rates.empty:
-#         return pd.DataFrame()  # No ratings found
-    
-#     # 2. load similarity matrix (already cached)
-#     sim_df = build_user_similarity_matrix(db_mtime)
-#     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
-    
-#     # If user not in similarity matrix (new user), compute similarities on-the-fly
-#     if neighbours.empty:
-#         st.info("Computing similarities with Greek guild users...")
-#         neighbours = compute_user_similarities_realtime(username, user_rates, DB_RATINGS)
-        
-#         if neighbours.empty:
-#             return pd.DataFrame()  # Still no neighbours found
-    
 def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> tuple[pd.DataFrame, str]:
     """
     Produce recommendations for a *single* username.
