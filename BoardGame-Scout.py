@@ -1825,10 +1825,29 @@ if st.session_state.get("show_user_section", False):
                 rec_df = recommend_games(username, RECOMMEND_COUNT)
                 st.session_state["rec_df"] = rec_df
             
+            # if rec_df.empty:
+            #     # Get diagnostics
+            #     conn = sqlite3.connect(DB_RATINGS)
+            #     # Check if user exists in DB (might have been just added)
+            #     user_check = pd.read_sql(
+            #         "SELECT COUNT(*) as count FROM ratings WHERE username = ?",
+            #         conn,
+            #         params=(username,)
+            #     )
+            #     user_ratings_count = user_check["count"].iloc[0]
+            #     conn.close()
+                
+            #     if user_ratings_count == 0:
+            #         st.warning(f"⚠️ No ratings found for username '{username}'. Please check the username or rate some games on BoardGameGeek first.")
+            #     elif user_ratings_count < MIN_OVERLAP:
+            #         st.warning(f"⚠️ You have {user_ratings_count} ratings, but need at least {MIN_OVERLAP} games that overlap with Greek guild users. Try rating more popular games.")
+            #     else:
+            #         st.warning(f"⚠️ Unable to generate recommendations. You have {user_ratings_count} ratings but not enough similar users found.")
+            # else:
+            #     st.success(f"🎯 Here are {len(rec_df)} games you might love!")
+
             if rec_df.empty:
-                # Get diagnostics
                 conn = sqlite3.connect(DB_RATINGS)
-                # Check if user exists in DB (might have been just added)
                 user_check = pd.read_sql(
                     "SELECT COUNT(*) as count FROM ratings WHERE username = ?",
                     conn,
@@ -1838,14 +1857,17 @@ if st.session_state.get("show_user_section", False):
                 conn.close()
                 
                 if user_ratings_count == 0:
-                    st.warning(f"⚠️ No ratings found for username '{username}'. Please check the username or rate some games on BoardGameGeek first.")
-                elif user_ratings_count < MIN_OVERLAP:
-                    st.warning(f"⚠️ You have {user_ratings_count} ratings, but need at least {MIN_OVERLAP} games that overlap with Greek guild users. Try rating more popular games.")
+                    st.warning(
+                        f"⚠️ No ratings found for username '{username}'. "
+                        "Please rate some games on BoardGameGeek first."
+                    )
                 else:
-                    st.warning(f"⚠️ Unable to generate recommendations. You have {user_ratings_count} ratings but not enough similar users found.")
+                    st.warning(
+                        f"⚠️ Found {user_ratings_count} ratings, but no similar Greek users "
+                        "were detected yet. Rating more popular games will improve recommendations."
+                    )
             else:
                 st.success(f"🎯 Here are {len(rec_df)} games you might love!")
-
 
 
 
