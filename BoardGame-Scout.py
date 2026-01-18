@@ -1731,20 +1731,12 @@ if st.session_state.get("show_user_section", False):
             # else:
             #     st.success(f"🎯 Here are {len(rec_df)} games you might love!")
             if rec_df.empty:
-                # Get the actual ratings that were fetched (from DB or BGG)
-                user_rates = get_user_ratings(username, DB_RATINGS)
-                
-                if user_rates.empty:
-                    st.warning(
-                        f"⚠️ No ratings found for username '{username}'. "
-                        "Please rate some games on BoardGameGeek first."
-                    )
-                else:
-                    st.warning(
-                        f"⚠️ Found {len(user_rates)} ratings for '{username}', but couldn't find "
-                        f"enough similar Greek guild users (need at least {MIN_OVERLAP} games in common). "
-                        "Try rating more popular games to improve recommendations."
-                    )
+                st.warning(
+                    f"⚠️ Couldn't generate recommendations for '{username}'. "
+                    f"This could mean: (1) no ratings found, or (2) not enough overlap "
+                    f"with Greek guild users (need at least {MIN_OVERLAP} games in common). "
+                    "Try rating more popular games to improve recommendations."
+                )
             else:
                 st.success(f"🎯 Here are {len(rec_df)} games you might love!")
 
