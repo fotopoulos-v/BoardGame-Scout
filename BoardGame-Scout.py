@@ -1437,13 +1437,41 @@ def build_user_similarity_matrix(db_mtime: float) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
+# def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
+#     """
+#     Produce recommendations for a *single* username.
+#     Fetches from BGG if user not in database.
+#     Returns DataFrame with columns:
+#     [game_id, title, predicted_rating, avg_greek_rating, reason]
+#     ready for st.dataframe.
+#     """
+#     import sqlite3, pandas as pd, numpy as np
+    
+#     # 1. Get user ratings (from DB or fetch from BGG)
+#     user_rates = get_user_ratings(username, DB_RATINGS)
+    
+#     if user_rates.empty:
+#         return pd.DataFrame()  # No ratings found
+    
+#     # 2. load similarity matrix (already cached)
+#     sim_df = build_user_similarity_matrix(db_mtime)
+#     neighbours = sim_df[sim_df["username"] == username].head(NEIGHBOURS)
+    
+#     # If user not in similarity matrix (new user), compute similarities on-the-fly
+#     if neighbours.empty:
+#         st.info("Computing similarities with Greek guild users...")
+#         neighbours = compute_user_similarities_realtime(username, user_rates, DB_RATINGS)
+        
+#         if neighbours.empty:
+#             return pd.DataFrame()  # Still no neighbours found
+    
+def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> tuple[pd.DataFrame, str]:
     """
     Produce recommendations for a *single* username.
     Fetches from BGG if user not in database.
-    Returns DataFrame with columns:
-    [game_id, title, predicted_rating, avg_greek_rating, reason]
-    ready for st.dataframe.
+    Returns tuple: (DataFrame, status_message)
+    - DataFrame: recommendations or empty
+    - status_message: "success", "no_ratings", or "no_similar_users"
     """
     import sqlite3, pandas as pd, numpy as np
     
@@ -1451,7 +1479,7 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     user_rates = get_user_ratings(username, DB_RATINGS)
     
     if user_rates.empty:
-        return pd.DataFrame()  # No ratings found
+        return pd.DataFrame(), "no_ratings"  # ← Changed
     
     # 2. load similarity matrix (already cached)
     sim_df = build_user_similarity_matrix(db_mtime)
@@ -1463,17 +1491,9 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
         neighbours = compute_user_similarities_realtime(username, user_rates, DB_RATINGS)
         
         if neighbours.empty:
-            return pd.DataFrame()  # Still no neighbours found
-    
-    # # 3. load all Greek ratings
-    # conn = sqlite3.connect(DB_RATINGS)
-    # all_rates = pd.read_sql("SELECT username, game_id, rating FROM ratings", conn)
-    # conn.close()
-    
-    # seen = set(user_rates["game_id"].tolist())
-    
-    # # 4. build neighbourhood rating matrix (only games not seen by active user)
-    # neigh_rates = all_rates[all_rates["username"].isin(neighbours["other_user"]) & ~all_rates["game_id"].isin(seen)]
+            return pd.DataFrame(), "no_similar_users"  # ← Changed
+
+
 
 
 
@@ -1549,7 +1569,8 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> pd.DataFrame:
     reason = f"Loved by {len(recs)} Greek users most similar to you (top neighbours: {', '.join(top_neigh['other_user'].head(3).tolist())})"
     recs["reason"] = reason
     
-    return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
+    # return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"})
+    return recs[["game_id", "title", "pred", "avg_greek", "reason"]].rename(columns={"pred": "Predicted Rating"}), "success"
 
 
 def compute_user_similarities_realtime(username: str, user_rates: pd.DataFrame, db_path: str) -> pd.DataFrame:
@@ -1705,39 +1726,21 @@ if st.session_state.get("show_user_section", False):
             st.session_state["user_sub_view"] = "recommendations"
             
             with st.spinner("Building your personal recommendations..."):
-                rec_df = recommend_games(username, RECOMMEND_COUNT)
+                rec_df, status = recommend_games(username, RECOMMEND_COUNT)  # ← Now unpacks tuple
                 st.session_state["rec_df"] = rec_df
 
-            # if rec_df.empty:
-            #     conn = sqlite3.connect(DB_RATINGS)
-            #     user_check = pd.read_sql(
-            #         "SELECT COUNT(*) as count FROM ratings WHERE username = ?",
-            #         conn,
-            #         params=(username,)
-            #     )
-            #     user_ratings_count = user_check["count"].iloc[0]
-            #     conn.close()
-                
-            #     if user_ratings_count == 0:
-            #         st.warning(
-            #             f"⚠️ No ratings found for username '{username}'. "
-            #             "Please rate some games on BoardGameGeek first."
-            #         )
-            #     else:
-            #         st.warning(
-            #             f"⚠️ Found {user_ratings_count} ratings, but no similar Greek users "
-            #             "were detected yet. Rating more popular games will improve recommendations."
-            #         )
-            # else:
-            #     st.success(f"🎯 Here are {len(rec_df)} games you might love!")
-            if rec_df.empty:
+            if status == "no_ratings":
                 st.warning(
-                    f"⚠️ Couldn't generate recommendations for '{username}'. "
-                    f"This could mean: (1) no ratings found, or (2) not enough overlap "
-                    f"with Greek guild users (need at least {MIN_OVERLAP} games in common). "
+                    f"⚠️ No ratings found for username '{username}'. "
+                    "Please rate some games on BoardGameGeek first."
+                )
+            elif status == "no_similar_users":
+                st.warning(
+                    f"⚠️ Found ratings for '{username}', but couldn't find "
+                    f"enough similar Greek guild users (need at least {MIN_OVERLAP} games in common). "
                     "Try rating more popular games to improve recommendations."
                 )
-            else:
+            elif status == "success":
                 st.success(f"🎯 Here are {len(rec_df)} games you might love!")
 
 
