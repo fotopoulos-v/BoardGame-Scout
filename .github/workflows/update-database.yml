@@ -31,13 +31,18 @@ jobs:
         run: |
           pip install requests selenium pandas webdriver-manager
 
+
+      - name: Install Xvfb
+        run: sudo apt-get install -y xvfb
+        
       # Step 1: Download CSV
       - name: Download BGG CSV
         env:
           BGG_USERNAME: ${{ secrets.BGG_USERNAME }}
           BGG_PASSWORD: ${{ secrets.BGG_PASSWORD }}
         run: |
-          python bg_ranks_csv_download.py
+          xvfb-run python bg_ranks_csv_download.py
+
 
       # Step 2: Unzip CSV
       - name: Unzip CSV file
