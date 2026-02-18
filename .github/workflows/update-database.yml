@@ -109,5 +109,9 @@ jobs:
           path: |
             boardgames_ranks.csv
             boardgames.db
+            error_screenshot.png
+            login_form_error.png
+            login_form_page.html
+            error_page_source.html
           retention-days: 7
 
