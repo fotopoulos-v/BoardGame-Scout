@@ -3,3 +3,4 @@ pandas
 requests
 scikit-learn
 numpy
+webdriver-manager
