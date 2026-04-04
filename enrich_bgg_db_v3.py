@@ -33,6 +33,33 @@ def get_bgg_token():
 token = get_bgg_token()
 
 
+def normalize_is_expansion(value) -> int:
+    """Normalize CSV/DB expansion flags to integer 0 or 1."""
+    if pd.isna(value):
+        return 0
+
+    if isinstance(value, str):
+        cleaned = value.strip().lower()
+        if cleaned in {"1", "true", "yes", "y"}:
+            return 1
+        if cleaned in {"0", "false", "no", "n", ""}:
+            return 0
+
+    try:
+        return 1 if int(float(value)) != 0 else 0
+    except (TypeError, ValueError):
+        return 0
+
+
+def ensure_is_expansion_column(conn: sqlite3.Connection):
+    """Ensure the `games` table has the `is_expansion` column."""
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(games)")}
+    if "is_expansion" not in cols:
+        print("Adding missing `is_expansion` column to games table...")
+        conn.execute("ALTER TABLE games ADD COLUMN is_expansion INTEGER NOT NULL DEFAULT 0")
+        conn.commit()
+
+
 def parse_thing_item(item):
     def text_or_none(elem, attr=None):
         if elem is None:
@@ -160,15 +187,27 @@ def main(token=None):
     df = pd.read_csv(CSV_PATH)
     df.rename(columns={"usersrated": "csv_num_voters"}, inplace=True)
 
+    if "is_expansion" not in df.columns:
+        print("Warning: `is_expansion` column not found in CSV. Defaulting all rows to 0.")
+        df["is_expansion"] = 0
+    df["is_expansion"] = df["is_expansion"].apply(normalize_is_expansion).astype(int)
+
     # Load DB
     if not os.path.exists(DB_PATH):
         raise FileNotFoundError(f"Database file not found: {DB_PATH}")
     
     conn = sqlite3.connect(DB_PATH)
+    ensure_is_expansion_column(conn)
     c = conn.cursor()
 
-    # Build current voter counts map
-    db_voters = {row[0]: row[1] for row in c.execute("SELECT id, num_voters FROM games")}
+    # Build current DB snapshot map
+    db_state = {
+        row[0]: {
+            "num_voters": int(row[1] or 0),
+            "is_expansion": normalize_is_expansion(row[2]),
+        }
+        for row in c.execute("SELECT id, num_voters, is_expansion FROM games")
+    }
 
     # Separate new games and games to update
     new_game_rows = {}
@@ -177,9 +216,15 @@ def main(token=None):
     for _, row in df.iterrows():
         game_id = int(row["id"])
         csv_voters = int(row["csv_num_voters"])
-        if game_id not in db_voters:
+        csv_is_expansion = normalize_is_expansion(row.get("is_expansion", 0))
+        db_record = db_state.get(game_id)
+
+        if db_record is None:
             new_game_rows[game_id] = row
-        elif csv_voters != db_voters[game_id]:
+        elif (
+            csv_voters != db_record["num_voters"]
+            or csv_is_expansion != db_record["is_expansion"]
+        ):
             to_update_rows[game_id] = row
 
     new_game_ids = list(new_game_rows.keys())
@@ -214,8 +259,8 @@ def main(token=None):
                     geek_rating, avg_rating, num_voters, year_published,
                     complexity, min_players, max_players, min_playtime,
                     max_playtime, playing_time, min_age, categories,
-                    designers, artists, publishers, mechanics, last_updated
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    designers, artists, publishers, mechanics, is_expansion, last_updated
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (
                 game_id, row.get("rank"),
                 game["title"], game["description"], game["thumbnail"], game["image"],
@@ -224,7 +269,7 @@ def main(token=None):
                 game["max_players"], game["min_playtime"], game["max_playtime"],
                 game["playing_time"], game["min_age"], game["categories"],
                 game["designers"], game["artists"], game["publishers"],
-                game["mechanics"], now
+                game["mechanics"], normalize_is_expansion(row.get("is_expansion", 0)), now
             ))
             inserted_count += 1
 
@@ -258,7 +303,7 @@ def main(token=None):
                     complexity = ?, min_players = ?, max_players = ?, min_playtime = ?,
                     max_playtime = ?, playing_time = ?, min_age = ?, categories = ?,
                     designers = ?, artists = ?, publishers = ?, mechanics = ?,
-                    last_updated = ?
+                    is_expansion = ?, last_updated = ?
                 WHERE id = ?
             """, (
                 row.get("rank"),
@@ -268,7 +313,7 @@ def main(token=None):
                 game["max_players"], game["min_playtime"], game["max_playtime"],
                 game["playing_time"], game["min_age"], game["categories"],
                 game["designers"], game["artists"], game["publishers"],
-                game["mechanics"], now, game_id
+                game["mechanics"], normalize_is_expansion(row.get("is_expansion", 0)), now, game_id
             ))
             updated_count += 1
 

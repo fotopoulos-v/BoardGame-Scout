@@ -8,6 +8,7 @@ from typing import List, Dict, Optional
 import os
 import sqlite3
 import base64
+import html
 import time
 import zipfile
 from datetime import datetime
@@ -22,7 +23,9 @@ st.set_page_config(
 )
 
 
-st.cache_data.clear()  # clear all cached data on app start (for development purposes)
+# NOTE: Do not clear `st.cache_data()` on every rerun; it forces expensive
+# helper functions to recompute whenever a widget changes.
+# st.cache_data.clear()
 
 # ==========================
 # CONSTANTS
@@ -206,6 +209,11 @@ st.markdown("""
     /* Sidebar background */
     section[data-testid="stSidebar"] { background-color: #2B060A; color: #FFB703; }
 
+    /* Compact sidebar section spacing */
+    section[data-testid="stSidebar"] hr {
+        margin: 0.5rem 0 !important;
+    }
+
     /* Main background */
     .stApp { background-color: #02021A !important; }
     input, textarea, select, div[data-baseweb="input"] input { color: rgba(200, 200, 200, 0.45) !important; }
@@ -257,6 +265,14 @@ st.markdown("""
         font-weight: bold;
     }
 
+    .filter-label-box {
+        min-height: 38px;
+        display: flex;
+        align-items: flex-end;
+        margin: 0 0 0.15rem 0 !important;
+        line-height: 1.2;
+    }
+
     /* Input fields - minimal spacing */
     [data-testid="stExpander"] .stColumn input[data-testid="stNumberInputField"] {
         margin-top: 0 !important;
@@ -274,21 +290,27 @@ st.markdown("""
 
     /* Match the height of number inputs */
     [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] {
-    min-height: 40px !important; 
-    max-height: 40px !important;
+    min-height: 40px !important;
     width: 100% !important;
 }
     
     
 
 [data-testid="stExpander"] .stMultiSelect [data-baseweb="select"] > div {
-    min-height: 40px !important;  
-    padding-top: 4px !important; 
+    min-height: 40px !important;
+    padding-top: 4px !important;
     padding-bottom: 4px !important;
     width: 100% !important;
+    overflow: hidden !important;
 }
             
 
+
+    /* Keep selected category/mechanics chips from cluttering the filter grid */
+    [data-testid="stExpander"] div.st-key-f_category [data-baseweb="tag"],
+    [data-testid="stExpander"] div.st-key-f_mechanics [data-baseweb="tag"] {
+        display: none !important;
+    }
 
     /* Align multiselect input baseline with number inputs */
     [data-testid="stExpander"] .stMultiSelect {
@@ -305,12 +327,40 @@ st.markdown("""
 
 
     /* Category and Mechanics spacing */
+    [data-testid="stExpander"] div.st-key-f_category.stElementContainer,
     [data-testid="stExpander"] div.st-key-f_mechanics.stElementContainer {
+        margin-top: 0 !important;
+        margin-bottom: 0 !important;
+    }
+
+    [data-testid="stExpander"] .st-key-f_category + div,
+    [data-testid="stExpander"] .st-key-f_mechanics + div {
         margin-top: 0 !important;
     }
 
-    [data-testid="stExpander"] .st-key-f_category + div {
-        margin-top: 0.5rem !important;
+    /* Exclude expansions toggle: slightly larger and truly centered */
+    [data-testid="stExpander"] div.st-key-exclude_expansions.stElementContainer {
+        width: 100% !important;
+        min-height: 40px !important;
+        margin-top: 0.4rem !important;
+    }
+
+    [data-testid="stExpander"] div.st-key-exclude_expansions.stElementContainer > div,
+    [data-testid="stExpander"] div.st-key-exclude_expansions [data-testid="stToggle"] {
+        display: flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: 100% !important;
+    }
+
+    [data-testid="stExpander"] div.st-key-exclude_expansions [data-baseweb="checkbox"] {
+        display: inline-flex !important;
+        justify-content: center !important;
+        align-items: center !important;
+        width: auto !important;
+        margin: 0 auto !important;
+        transform: scale(1.60) !important;
+        transform-origin: center center !important;
     }
 
     /* Slider - make more compact */
@@ -425,7 +475,7 @@ with st.sidebar:
     # st.markdown("---")
     st.markdown(
         """
-        <p style="color:#FCF2D9; font-size:16px;">
+        <p style="color:#FCF2D9; font-size:16px; margin:0 0 2px 0;">
         💰 Support me!<br>
         Your support helps me maintain and improve the app.
         </p>
@@ -437,8 +487,8 @@ with st.sidebar:
         .bmc-container {
             display: flex;
             justify-content: center;
-            margin-top: 8px;
-            margin-bottom: 18px;
+            margin-top: 4px;
+            margin-bottom: 8px;
         }
 
         .bmc-button {
@@ -469,11 +519,9 @@ with st.sidebar:
     )
 
 
-
-
-    # -------------------------
-    # Sidebar: Powered by BGG (required attribution)
-    # -------------------------
+# -------------------------
+# Sidebar: Powered by BGG (required attribution)
+# -------------------------
     st.markdown("---")
 
     # Path to your logo file
@@ -491,9 +539,16 @@ with st.sidebar:
         # CSS for hover scaling
         st.markdown("""
             <style>
+            .bgg-logo-container {
+                text-align: center;
+                margin: 8px 0;
+                line-height: 0;
+            }
             .bgg-logo-container img {
                 border-radius: 8px;
-                margin-top:-20px;
+                margin: 0 auto;
+                margin-bottom: 22px;
+                display: block;
                 transition: transform 0.2s ease-in-out;
             }
             .bgg-logo-container img:hover {
@@ -505,7 +560,7 @@ with st.sidebar:
         # Render clickable image with hover effect
         st.sidebar.markdown(
             f"""
-            <div class="bgg-logo-container" style="text-align:center; margin-top:10px;">
+            <div class="bgg-logo-container">
                 <a href="https://boardgamegeek.com" target="_blank" rel="noopener">
                     <img src="data:image/jpeg;base64,{img_base64}" width="160" alt="Powered by BGG">
                 </a>
@@ -514,6 +569,61 @@ with st.sidebar:
             unsafe_allow_html=True
         )
 
+
+
+# -------------------------
+# Sidebar: Promo cards for your other apps
+# -------------------------
+
+
+    _app_dir = os.path.dirname(os.path.abspath(__file__))
+    guru_logo_path = os.path.join(_app_dir, "assets", "images", "guru_logo.png")
+    broke_logo_path = os.path.join(_app_dir, "assets", "images", "broke_logo.png")
+    boardgame_broke_url = "#"  # TODO: replace with your deployed BoardGame Broke URL
+
+    def render_sidebar_promo_card(image_path, target_url, title, description, width=48):
+        image_html = ""
+        if os.path.exists(image_path):
+            with open(image_path, "rb") as img_file:
+                encoded_image = base64.b64encode(img_file.read()).decode()
+            image_html = f'<img src="data:image/png;base64,{encoded_image}" alt="{title}" style="width:{width}px; height:auto; display:block; border-radius:8px; flex-shrink:0;">'
+
+        st.html(
+            f'''
+            <style>body {{ margin:0; padding:0; }}</style>
+            <a href="{target_url}" target="_blank" rel="noopener noreferrer"
+               style="display:block; text-decoration:none; cursor:pointer;
+                      background-color:#021421; border:1px solid #6A2B96;
+                      border-radius:10px; padding:10px 12px; margin:2px 0;">
+                <div style="display:flex; align-items:center; gap:10px; margin-bottom:4px;">
+                    {image_html}
+                    <span style="color:#FCF2D9; font-size:15px; font-weight:700;">{title}</span>
+                </div>
+                <p style="color:#E6D8F0; font-size:12px; margin:0; line-height:1.4;">{description}</p>
+            </a>
+            '''
+        )
+
+    # st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
+    st.markdown("---")
+    st.markdown('<p style="color:#FCF2D9; font-size:14px; font-weight:600; margin:0 0 4px 0;">🎮 Check my other apps!</p>', unsafe_allow_html=True)
+    render_sidebar_promo_card(
+        guru_logo_path,
+        "https://boardgame-guru.streamlit.app/",
+        "BoardGame Guru",
+        "Upload rulebooks and ask rules questions instantly.",
+    )
+
+    render_sidebar_promo_card(
+        broke_logo_path,
+        boardgame_broke_url,
+        "BoardGame Broke",
+        "Compare Greek store prices and availability for board games.",
+    )
+
+    # st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
+
+ 
 
     # -------------------------
     # Sidebar: Database info
@@ -579,7 +689,7 @@ with col1:
 with col2:
     st.markdown("<h1 style='color:#FAFAFA; margin-top: 10px; margin-left: -10px;'>BoardGame Scout</h1>", unsafe_allow_html=True)
 
-st.write("Find board games using name or filters!")
+st.write("Discover board games using title or filters from the entire BoardGameGeek database or get personalized recommendations!")
 
 # -------------------------
 # Keep these flags in session_state
@@ -601,7 +711,7 @@ PAGE_SIZE = 50
 
 # -----------------------------
 # Mechanics Extraction Function
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_unique_mechanics():
     """Extract all unique mechanics from the database."""
     if not os.path.exists(DB_PATH):
@@ -624,7 +734,7 @@ def get_unique_mechanics():
 
 # -----------------------------
 # Type / Category Extraction Function
-@st.cache_data
+@st.cache_data(show_spinner=False)
 def get_unique_categories():
     """Extract all unique categories from the database."""
     if not os.path.exists(DB_PATH):
@@ -796,181 +906,157 @@ defaults = {
     "f_artists": "",
     "f_publishers": "",
     # "f_mechanics": [],
+    "exclude_expansions": False,
     "max_results": 0,  # 0 -> unlimited
     "db_page": 0
 }
 for k, v in defaults.items():
     st.session_state.setdefault(k, v)
 
+
+def render_multiselect_summary(selected_items, singular_label, plural_label):
+    """Show a compact summary for selected multiselect items; hover reveals the full list."""
+    if not selected_items:
+        return
+
+    count = len(selected_items)
+    label = singular_label if count == 1 else plural_label
+    tooltip_items = "&#10;".join(html.escape(item, quote=True) for item in selected_items)
+
+    st.markdown(
+        f"""
+        <div style="margin:0.02rem 0 0.20rem 0.05rem; font-size:0.78rem; color:#B8A898; line-height:1.25;">
+            <span title="{tooltip_items}" style="cursor:help; border-bottom:1px dotted #B8A898;">
+                {count} {label} selected — hover to view
+            </span>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
 # -------------------------
 # Filters UI (compact + the additional text inputs requested)
 # -------------------------
 with st.expander("🎚️ Filters"):
-    c1, c2, c3, c4 = st.columns(4, gap="small")
-
-    # -------------------------------------------------
-    # COLUMN 1 — Players + Year
-    # -------------------------------------------------
-    with c1:
-        # PLAYERS
-        for key in ["min_players", "max_players"]:
-            if key not in st.session_state:
-                st.session_state[key] = None
-
-        min_p_active = st.session_state["min_players"] is not None
+    def render_filter_title(label_text, active=False, add_check=True):
+        display_text = f"{label_text} ✅" if active and add_check else label_text
+        color = "#00FFFF" if active else "inherit"
         st.markdown(
-            f'<div style="color:{("#00FFFF" if min_p_active else "inherit")}; margin:0;">'
-            f'{"Players (From) ✅" if min_p_active else "Players (From)"}</div>',
-            unsafe_allow_html=True
+            f'<div class="filter-label-box" style="color:{color};">{display_text}</div>',
+            unsafe_allow_html=True,
         )
+
+    def labeled_text_filter(key, label):
+        if key not in st.session_state:
+            st.session_state[key] = ""
+        active = st.session_state[key].strip() != ""
+        render_filter_title(label, active)
+        st.text_input(label, key=key, label_visibility="collapsed")
+
+    for key in ["min_players", "max_players", "min_year", "max_year", "min_duration", "max_duration", "min_age"]:
+        if key not in st.session_state:
+            st.session_state[key] = None
+
+    if "f_category" not in st.session_state:
+        st.session_state["f_category"] = []
+    if "f_mechanics" not in st.session_state:
+        st.session_state["f_mechanics"] = []
+    if "complexity_slider" not in st.session_state:
+        st.session_state["complexity_slider"] = 5.0
+    if "max_results" not in st.session_state:
+        st.session_state["max_results"] = 0
+    if "exclude_expansions" not in st.session_state:
+        st.session_state["exclude_expansions"] = False
+
+    # Row 1
+    r1c1, r1c2, r1c3, r1c4 = st.columns(4, gap="small")
+    with r1c1:
+        render_filter_title("Players (From)", st.session_state["min_players"] is not None)
         st.number_input("Minimum players", min_value=1, max_value=20, key="min_players", label_visibility="collapsed")
-
-        max_p_active = st.session_state["max_players"] is not None
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if max_p_active else "inherit")}; margin:0;">'
-            f'{"Players (To) ✅" if max_p_active else "Players (To)"}</div>',
-            unsafe_allow_html=True
-        )
+    with r1c2:
+        render_filter_title("Players (To)", st.session_state["max_players"] is not None)
         st.number_input("Maximum players", min_value=1, max_value=20, key="max_players", label_visibility="collapsed")
-
-        # YEAR
-        for key in ["min_year", "max_year"]:
-            if key not in st.session_state:
-                st.session_state[key] = None
-
-        min_y_active = st.session_state["min_year"] is not None
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if min_y_active else "inherit")}; margin:0;">'
-            f'{"Year (From) ✅" if min_y_active else "Year (From)"}</div>',
-            unsafe_allow_html=True
-        )
-        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year", label_visibility="collapsed")
-
-        max_y_active = st.session_state["max_year"] is not None
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if max_y_active else "inherit")}; margin:0;">'
-            f'{"Year (To) ✅" if max_y_active else "Year (To)"}</div>',
-            unsafe_allow_html=True
-        )
-        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
-
-    # -------------------------------------------------
-    # COLUMN 2 — Duration + Category + Mechanics
-    # -------------------------------------------------
-    with c2:
-        for key in ["min_duration", "max_duration"]:
-            if key not in st.session_state:
-                st.session_state[key] = None
-
-        # MIN DURATION
-        min_d_active = st.session_state["min_duration"] is not None
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if min_d_active else "inherit")}; margin:0;">'
-            f'{"Min duration (min) ✅" if min_d_active else "Min duration (min)"}</div>',
-            unsafe_allow_html=True
-        )
-        st.number_input("Minimum duration", min_value=1, max_value=600, key="min_duration", label_visibility="collapsed")
-
-        # MAX DURATION
-        max_d_active = st.session_state["max_duration"] is not None
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if max_d_active else "inherit")}; margin:0;">'
-            f'{"Max duration (min) ✅" if max_d_active else "Max duration (min)"}</div>',
-            unsafe_allow_html=True
-        )
-        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
-
-        # CATEGORY
-        def labeled_text_filter(key, label):
-            if key not in st.session_state:
-                st.session_state[key] = ""
-            active = st.session_state[key].strip() != ""
-            st.markdown(
-                f'<div style="color:{("#00FFFF" if active else "inherit")}; margin:0; ">' # margin:0;
-                f'{label + " ✅" if active else label}</div>',
-                unsafe_allow_html=True
-            )
-            st.text_input("Category", key=key, label_visibility="collapsed")
-
-        # labeled_text_filter("f_category", "Type / Category")
-        # CATEGORY multiselect
-        if "f_category" not in st.session_state:
-            st.session_state["f_category"] = []
-
-        category_options = get_unique_categories()
-        category_active = len(st.session_state["f_category"]) > 0
-
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if category_active else "inherit")}; ">' # margin:0;
-            f'{"Type / Category ✅" if category_active else "Type / Category"}</div>',
-            unsafe_allow_html=True
-        )
-        st.multiselect("Select categories", category_options, key="f_category", label_visibility="collapsed", placeholder="Select categories...")
-
-
-
-        # labeled_text_filter("f_mechanics", "Mechanics")
-        # MECHANICS multiselect
-        if "f_mechanics" not in st.session_state:
-            st.session_state["f_mechanics"] = []
-
-        mechanics_options = get_unique_mechanics()
-        mechanics_active = len(st.session_state["f_mechanics"]) > 0
-
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if mechanics_active else "inherit")};">' # margin:0;
-            f'{"Mechanics ✅" if mechanics_active else "Mechanics"}</div>',
-            unsafe_allow_html=True
-        )
-        st.multiselect("Select mechanics", mechanics_options, key="f_mechanics", label_visibility="collapsed", placeholder="Select mechanics...")
-
-    # -------------------------------------------------
-    # COLUMN 3 — Designers + Artists + Publishers
-    # -------------------------------------------------
-    with c3:
+    with r1c3:
         labeled_text_filter("f_designers", "Designers")
+    with r1c4:
+        render_filter_title("Max Complexity (1-5)", st.session_state["complexity_slider"] != 5.0)
+        st.slider("Maximum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider", label_visibility="collapsed")
+
+    # Row 2
+    r2c1, r2c2, r2c3, r2c4 = st.columns(4, gap="small")
+    with r2c1:
+        render_filter_title("Min duration (min)", st.session_state["min_duration"] is not None)
+        st.number_input("Minimum duration", min_value=1, max_value=600, key="min_duration", label_visibility="collapsed")
+    with r2c2:
+        render_filter_title("Max duration (min)", st.session_state["max_duration"] is not None)
+        st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
+    with r2c3:
         labeled_text_filter("f_artists", "Artists")
-        labeled_text_filter("f_publishers", "Publishers")
-
-    # -------------------------------------------------
-    # COLUMN 4 — Complexity + Age + Max Results
-    # -------------------------------------------------
-    with c4:
-        # COMPLEXITY
-        if "complexity_slider" not in st.session_state:
-            st.session_state["complexity_slider"] = 5.0
-
-        comp_active = st.session_state["complexity_slider"] != 5.0
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if comp_active else "inherit")}; margin:0;">'
-            f'{"Max Complexity (1-5) ✅" if comp_active else "Max Complexity (1-5)"}</div>',
-            unsafe_allow_html=True
-        )
-        st.slider("Minimum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider", label_visibility="collapsed")
-
-        # MIN AGE
-        if "min_age" not in st.session_state:
-            st.session_state["min_age"] = None
-
-        age_active = st.session_state["min_age"] not in [None, 0]
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if age_active else "inherit")}; margin:0;">'
-            f'{"Min Age ✅" if age_active else "Min Age"}</div>',
-            unsafe_allow_html=True
-        )
+    with r2c4:
+        render_filter_title("Min Age", st.session_state["min_age"] not in [None, 0])
         st.number_input("Minimum age", min_value=0, max_value=99, key="min_age", label_visibility="collapsed")
 
-        # MAX RESULTS
-        if "max_results" not in st.session_state:
-            st.session_state["max_results"] = 0
-
+    # Row 3
+    r3c1, r3c2, r3c3, r3c4 = st.columns(4, gap="small")
+    with r3c1:
+        render_filter_title("Year (From)", st.session_state["min_year"] is not None)
+        st.number_input("Minimum year", min_value=1900, max_value=2100, key="min_year", label_visibility="collapsed")
+    with r3c2:
+        render_filter_title("Year (To)", st.session_state["max_year"] is not None)
+        st.number_input("Maximum year", min_value=1900, max_value=2100, key="max_year", label_visibility="collapsed")
+    with r3c3:
+        labeled_text_filter("f_publishers", "Publishers")
+    with r3c4:
         mr_active = st.session_state["max_results"] not in [0, None]
-        st.markdown(
-            f'<div style="color:{("#00FFFF" if mr_active else "inherit")}; margin:0;">'
-            f'{"Max Results ⚠️" if mr_active else "Max Results (0 = unlimited)"}</div>',
-            unsafe_allow_html=True
-        )
+        render_filter_title("Max Results ⚠️" if mr_active else "Max Results (0 = unlimited)", mr_active, add_check=False)
         st.number_input("Maximum results", min_value=0, max_value=1_000_000, key="max_results", label_visibility="collapsed")
+
+    # Row 4
+    r4c1, r4c2, r4c3, r4c4 = st.columns(4, gap="small")
+    with r4c1:
+        category_options = get_unique_categories()
+        category_active = len(st.session_state["f_category"]) > 0
+        render_filter_title("Type / Category", category_active)
+        category_placeholder = (
+            "Select categories..."
+            if not category_active
+            else f"{len(st.session_state['f_category'])} categor{'y' if len(st.session_state['f_category']) == 1 else 'ies'} selected"
+        )
+        st.multiselect(
+            "Select categories",
+            category_options,
+            key="f_category",
+            label_visibility="collapsed",
+            placeholder=category_placeholder,
+        )
+        render_multiselect_summary(st.session_state["f_category"], "category", "categories")
+    with r4c2:
+        mechanics_options = get_unique_mechanics()
+        mechanics_active = len(st.session_state["f_mechanics"]) > 0
+        render_filter_title("Mechanics", mechanics_active)
+        mechanics_placeholder = (
+            "Select mechanics..."
+            if not mechanics_active
+            else f"{len(st.session_state['f_mechanics'])} mechanic{'s' if len(st.session_state['f_mechanics']) != 1 else ''} selected"
+        )
+        st.multiselect(
+            "Select mechanics",
+            mechanics_options,
+            key="f_mechanics",
+            label_visibility="collapsed",
+            placeholder=mechanics_placeholder,
+        )
+        render_multiselect_summary(st.session_state["f_mechanics"], "mechanic", "mechanics")
+    with r4c3:
+        render_filter_title("Exclude expansions", st.session_state["exclude_expansions"])
+        st.toggle(
+            "Exclude expansions",
+            key="exclude_expansions",
+            label_visibility="collapsed",
+            help="When enabled, games tagged 'Expansion for Base-game' are excluded from search results.",
+        )
+    with r4c4:
+        st.markdown("&nbsp;", unsafe_allow_html=True)
 
 
 
@@ -1115,15 +1201,27 @@ def fetch_bgg_collection(username, filter_flag, max_retries=10, delay=3):
 st.markdown("""
     <style>
     /* Override the main button styles for the 4-button row specifically */
+    div.stElementContainer.st-key-search_btn,
+    div.stElementContainer.st-key-clear_btn,
+    div.stElementContainer.st-key-hot_games_btn,
+    div.stElementContainer.st-key-your_games_btn {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
     div.st-key-search_btn button,
     div.st-key-clear_btn button,
     div.st-key-hot_games_btn button,
     div.st-key-your_games_btn button {
-        width: 220px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         height: 44px !important;
-        font-size: 22px !important;
-        padding: 0 10px !important;
+        font-size: clamp(12px, 1.15vw, 22px) !important;
+        padding: 0 6px !important;
         white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
     
     /* Your Games button - Gold - Ultra-specific selector */
@@ -1623,7 +1721,39 @@ def compute_user_similarities_realtime(username: str, user_rates: pd.DataFrame, 
 # -------------------------
 st.markdown("""
     <style>
-    /* Reveal button - Blue - Maximum specificity to override secondary defaults */
+    /* Keep the Your Games controls responsive when the sidebar is resized */
+    div.stElementContainer.st-key-bgg_username_input,
+    div.stElementContainer.st-key-bgg_list_select,
+    div.stElementContainer.st-key-reveal_btn,
+    div.stElementContainer.st-key-rec_btn {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    div.stElementContainer.st-key-bgg_username_input label,
+    div.stElementContainer.st-key-bgg_list_select label {
+        display: block !important;
+        min-height: 1.35rem !important;
+        margin-bottom: 0.15rem !important;
+        width: 100% !important;
+    }
+
+    div.stElementContainer.st-key-bgg_username_input label p,
+    div.stElementContainer.st-key-bgg_list_select label p {
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: block !important;
+        max-width: 100% !important;
+    }
+
+    div.stElementContainer.st-key-bgg_username_input [data-baseweb="input"],
+    div.stElementContainer.st-key-bgg_list_select [data-baseweb="select"] {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    /* Reveal button - Blue - responsive */
     div.stElementContainer.st-key-reveal_btn div.stButton > button,
     div.stElementContainer.st-key-reveal_btn div.stButton > button[kind="secondary"],
     div.stElementContainer.st-key-reveal_btn button[kind="secondary"],
@@ -1633,9 +1763,19 @@ st.markdown("""
     div.stElementContainer.st-key-reveal_btn button:focus {
         background-color: #172E61 !important;
         color: white !important;
-        width: 190px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
         height: 38px !important;
-        margin-top: 0px !important;
+        font-size: clamp(10px, 0.95vw, 16px) !important;
+        padding: 0 6px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-top: 0 !important;
         border: 1px solid #0F1F47 !important;
         transform: none !important;
     }
@@ -1655,12 +1795,22 @@ st.markdown("""
     div.stElementContainer.st-key-rec_btn div.stButton > button:focus,
     div.stElementContainer.st-key-rec_btn button:active,
     div.stElementContainer.st-key-rec_btn button:focus {
-        background-color: #4F1022 !important;   /* your favourite purple */
+        background-color: #4F1022 !important;
         color: white !important;
-        width  : 190px !important;              /* make it wider */
-        height : 38px !important;
-        margin-top: 0px !important;
-        margin-left: 8px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        height: 38px !important;
+        font-size: clamp(10px, 0.95vw, 16px) !important;
+        padding: 0 6px !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        margin-top: 0 !important;
+        margin-left: 0 !important;
         border: 1px solid #4F1022 !important;
         transform: none !important;
     }
@@ -1669,6 +1819,15 @@ st.markdown("""
         background-color: #B30034 !important;
         transform: scale(1.05) !important;
         border: 1px solid #7B2CBF !important;
+    }
+
+    div.stElementContainer.st-key-reveal_btn div.stButton > button p,
+    div.stElementContainer.st-key-rec_btn div.stButton > button p {
+        margin: 0 !important;
+        width: 100% !important;
+        white-space: nowrap !important;
+        overflow: hidden !important;
+        text-overflow: ellipsis !important;
     }
             
     </style>
@@ -1682,9 +1841,17 @@ if st.session_state.get("show_user_section", False):
     col_username, col_list, col_reveal, col_rec = st.columns([2, 1.5, 1.6, 2.3], gap='small')
 
     with col_username:
-        username = st.text_input("Enter your BoardGameGeek username:", placeholder="BGG username")
+        username = st.text_input(
+            "Enter your BoardGameGeek username:",
+            placeholder="BGG username",
+            key="bgg_username_input",
+        )
     with col_list:
-        option = st.selectbox("Choose list:", ["Owned Games", "Rated Games", "Wishlist"])
+        option = st.selectbox(
+            "Choose list:",
+            ["Owned Games", "Rated Games", "Wishlist"],
+            key="bgg_list_select",
+        )
     with col_reveal:
         reveal_clicked = st.button("See your games", key="reveal_btn")
     with col_rec:
@@ -1905,6 +2072,11 @@ def build_where_and_params():
         for mechanic in mechanics_selected:
             where.append("lower(mechanics) LIKE ?")
             params.append(f"%{mechanic.lower()}%")
+
+    # Exclude expansions when the filter toggle is on
+    if st.session_state.get("exclude_expansions", False):
+        where.append("(categories IS NULL OR lower(categories) NOT LIKE ?)")
+        params.append("%expansion for base-game%")
 
     # Text fields that still use text input
     txt_filters = [

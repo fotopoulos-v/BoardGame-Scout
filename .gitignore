@@ -25,3 +25,4 @@ secret_files/
 previous_versions/
 
 boardgames.db
+*.db
