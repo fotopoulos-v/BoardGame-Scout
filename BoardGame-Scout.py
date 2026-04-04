@@ -614,12 +614,12 @@ with st.sidebar:
         "Upload rulebooks and ask rules questions instantly.",
     )
 
-    render_sidebar_promo_card(
-        broke_logo_path,
-        boardgame_broke_url,
-        "BoardGame Broke",
-        "Compare Greek store prices and availability for board games.",
-    )
+    # render_sidebar_promo_card(
+    #     broke_logo_path,
+    #     boardgame_broke_url,
+    #     "BoardGame Broke",
+    #     "Compare Greek store prices and availability for board games.",
+    # )
 
     # st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
 
@@ -1577,13 +1577,12 @@ def recommend_games(username: str, n: int = RECOMMEND_COUNT) -> tuple[pd.DataFra
 
     seen = set(user_rates["game_id"].tolist())
 
-    # ---- NEW: exclude expansions EARLY ----
+    # ---- Exclude expansions EARLY using the dedicated DB flag ----
     conn_bg = sqlite3.connect("boardgames.db")
     base_games = pd.read_sql("""
         SELECT id
         FROM games
-        WHERE categories NOT LIKE '%Expansion for Base-game%'
-        OR categories IS NULL
+        WHERE COALESCE(is_expansion, 0) = 0
     """, conn_bg)
     conn_bg.close()
 
@@ -2075,8 +2074,7 @@ def build_where_and_params():
 
     # Exclude expansions when the filter toggle is on
     if st.session_state.get("exclude_expansions", False):
-        where.append("(categories IS NULL OR lower(categories) NOT LIKE ?)")
-        params.append("%expansion for base-game%")
+        where.append("COALESCE(is_expansion, 0) = 0")
 
     # Text fields that still use text input
     txt_filters = [
