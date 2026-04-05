@@ -207,7 +207,7 @@ st.markdown("""
     <style>
     
     /* Sidebar background */
-    section[data-testid="stSidebar"] { background-color: #2B060A; color: #FFB703; }
+    section[data-testid="stSidebar"] { background-color: #24010F; color: #FFB703; }
 
     /* Compact sidebar section spacing */
     section[data-testid="stSidebar"] hr {
