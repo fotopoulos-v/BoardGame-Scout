@@ -896,7 +896,9 @@ defaults = {
     "max_duration": None,
     "min_year": None,
     "max_year": None,
-    "complexity_slider": 5.0,
+    "min_age": None,
+    "max_age": None,
+    "complexity_range": (1.0, 5.0),
     "game_type": "Select type...",
     # text-based column filters:
     "f_title": "",
@@ -953,7 +955,7 @@ with st.expander("🎚️ Filters"):
         render_filter_title(label, active)
         st.text_input(label, key=key, label_visibility="collapsed")
 
-    for key in ["min_players", "max_players", "min_year", "max_year", "min_duration", "max_duration", "min_age"]:
+    for key in ["min_players", "max_players", "min_year", "max_year", "min_duration", "max_duration", "min_age", "max_age"]:
         if key not in st.session_state:
             st.session_state[key] = None
 
@@ -961,8 +963,18 @@ with st.expander("🎚️ Filters"):
         st.session_state["f_category"] = []
     if "f_mechanics" not in st.session_state:
         st.session_state["f_mechanics"] = []
-    if "complexity_slider" not in st.session_state:
-        st.session_state["complexity_slider"] = 5.0
+    if "complexity_range" not in st.session_state:
+        legacy_complexity = st.session_state.get("complexity_slider", 5.0)
+        if isinstance(legacy_complexity, (tuple, list)) and len(legacy_complexity) == 2:
+            min_complexity = float(legacy_complexity[0])
+            max_complexity = float(legacy_complexity[1])
+        else:
+            min_complexity = 1.0
+            max_complexity = float(legacy_complexity)
+        st.session_state["complexity_range"] = (
+            max(1.0, min(5.0, min_complexity)),
+            max(1.0, min(5.0, max_complexity)),
+        )
     if "max_results" not in st.session_state:
         st.session_state["max_results"] = 0
     if "exclude_expansions" not in st.session_state:
@@ -977,10 +989,11 @@ with st.expander("🎚️ Filters"):
         render_filter_title("Players (To)", st.session_state["max_players"] is not None)
         st.number_input("Maximum players", min_value=1, max_value=20, key="max_players", label_visibility="collapsed")
     with r1c3:
-        labeled_text_filter("f_designers", "Designers")
+        render_filter_title("Min Age", st.session_state["min_age"] not in [None, 0])
+        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age", label_visibility="collapsed")
     with r1c4:
-        render_filter_title("Max Complexity (1-5)", st.session_state["complexity_slider"] != 5.0)
-        st.slider("Maximum complexity", min_value=1.0, max_value=5.0, step=0.01, key="complexity_slider", label_visibility="collapsed")
+        render_filter_title("Max Age", st.session_state["max_age"] not in [None, 0])
+        st.number_input("Maximum age", min_value=0, max_value=99, key="max_age", label_visibility="collapsed")
 
     # Row 2
     r2c1, r2c2, r2c3, r2c4 = st.columns(4, gap="small")
@@ -991,10 +1004,9 @@ with st.expander("🎚️ Filters"):
         render_filter_title("Max duration (min)", st.session_state["max_duration"] is not None)
         st.number_input("Maximum duration", min_value=1, max_value=600, key="max_duration", label_visibility="collapsed")
     with r2c3:
-        labeled_text_filter("f_artists", "Artists")
+        labeled_text_filter("f_designers", "Designers")
     with r2c4:
-        render_filter_title("Min Age", st.session_state["min_age"] not in [None, 0])
-        st.number_input("Minimum age", min_value=0, max_value=99, key="min_age", label_visibility="collapsed")
+        labeled_text_filter("f_artists", "Artists")
 
     # Row 3
     r3c1, r3c2, r3c3, r3c4 = st.columns(4, gap="small")
@@ -1048,6 +1060,17 @@ with st.expander("🎚️ Filters"):
         )
         render_multiselect_summary(st.session_state["f_mechanics"], "mechanic", "mechanics")
     with r4c3:
+        complexity_active = tuple(st.session_state["complexity_range"]) != (1.0, 5.0)
+        render_filter_title("Complexity", complexity_active)
+        st.slider(
+            "Complexity",
+            min_value=1.0,
+            max_value=5.0,
+            step=0.01,
+            key="complexity_range",
+            label_visibility="collapsed",
+        )
+    with r4c4:
         render_filter_title("Exclude expansions", st.session_state["exclude_expansions"])
         st.toggle(
             "Exclude expansions",
@@ -1055,8 +1078,6 @@ with st.expander("🎚️ Filters"):
             label_visibility="collapsed",
             help="When enabled, games tagged 'Expansion for Base-game' are excluded from search results.",
         )
-    with r4c4:
-        st.markdown("&nbsp;", unsafe_allow_html=True)
 
 
 
@@ -2119,15 +2140,28 @@ def build_where_and_params():
         where.append("year_published IS NOT NULL AND year_published <= ?")
         params.append(int(st.session_state["max_year"]))
 
-    # complexity - slider is max complexity (5.0 default means no filter)
-    if float(st.session_state.get("complexity_slider", 5.0)) != 5.0:
-        where.append("complexity IS NOT NULL AND complexity <= ?")
-        params.append(float(st.session_state["complexity_slider"]))
+    # complexity range filter
+    complexity_range = st.session_state.get("complexity_range", (1.0, 5.0))
+    if not isinstance(complexity_range, (tuple, list)) or len(complexity_range) != 2:
+        complexity_range = (1.0, 5.0)
 
-    # min_age
+    min_complexity = float(complexity_range[0])
+    max_complexity = float(complexity_range[1])
+
+    if min_complexity > 1.0:
+        where.append("complexity IS NOT NULL AND complexity >= ?")
+        params.append(min_complexity)
+    if max_complexity < 5.0:
+        where.append("complexity IS NOT NULL AND complexity <= ?")
+        params.append(max_complexity)
+
+    # age range filters
     if st.session_state.get("min_age") not in [None, ""]:
         where.append("min_age IS NOT NULL AND min_age >= ?")
         params.append(int(st.session_state["min_age"]))
+    if st.session_state.get("max_age") not in [None, ""]:
+        where.append("min_age IS NOT NULL AND min_age <= ?")
+        params.append(int(st.session_state["max_age"]))
 
     if where:
         return " WHERE " + " AND ".join(where), params
