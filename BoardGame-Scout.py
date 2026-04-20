@@ -621,7 +621,7 @@ with st.sidebar:
         "Compare Greek store prices and availability for board games.",
     )
 
-    st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
+    # st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
 
  
 
