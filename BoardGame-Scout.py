@@ -614,14 +614,14 @@ with st.sidebar:
         "Upload rulebooks and ask rules questions instantly.",
     )
 
-    # render_sidebar_promo_card(
-    #     broke_logo_path,
-    #     boardgame_broke_url,
-    #     "BoardGame Broke",
-    #     "Compare Greek store prices and availability for board games.",
-    # )
+    render_sidebar_promo_card(
+        broke_logo_path,
+        boardgame_broke_url,
+        "BoardGame Broke",
+        "Compare Greek store prices and availability for board games.",
+    )
 
-    # st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
+    st.markdown('<br><div style="border-top:2px solid #8F6863; margin-top:4px; margin-bottom:4px;"></div>', unsafe_allow_html=True)
 
  
 
