@@ -50,7 +50,62 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         # Navigate to login page
         print("Navigating to login page...")
         driver.get(login_url)
-        time.sleep(2)  # Give page time to load
+        wait = WebDriverWait(driver, 20)
+
+        def _wait_for_page_ready(timeout=20):
+            WebDriverWait(driver, timeout).until(
+                lambda d: d.execute_script("return document.readyState") == "complete"
+            )
+
+        def _find_first(selectors, timeout=5, condition="presence"):
+            for by, value in selectors:
+                try:
+                    if condition == "clickable":
+                        return WebDriverWait(driver, timeout).until(
+                            EC.element_to_be_clickable((by, value))
+                        )
+                    return WebDriverWait(driver, timeout).until(
+                        EC.presence_of_element_located((by, value))
+                    )
+                except TimeoutException:
+                    continue
+            return None
+
+        def _is_logged_in():
+            page_lower = driver.page_source.lower()
+            return (
+                _find_first([
+                    (By.CSS_SELECTOR, 'a[href*="/user/"]'),
+                    (By.CSS_SELECTOR, 'a[href*="/logout"]'),
+                    (By.CSS_SELECTOR, '[data-testid="user-menu"], [aria-label*="account" i]'),
+                ], timeout=2) is not None
+                or "sign out" in page_lower
+                or "logout" in page_lower
+            )
+
+        USERNAME_SELECTORS = [
+            (By.NAME, "username"),
+            (By.ID, "inputUsername"),
+            (By.CSS_SELECTOR, "input[type='text'][name*='user' i]"),
+            (By.CSS_SELECTOR, "input[type='email']"),
+            (By.CSS_SELECTOR, "input[autocomplete='username']"),
+        ]
+
+        PASSWORD_SELECTORS = [
+            (By.NAME, "password"),
+            (By.ID, "inputPassword"),
+            (By.CSS_SELECTOR, "input[type='password']"),
+            (By.CSS_SELECTOR, "input[autocomplete='current-password']"),
+        ]
+
+        SUBMIT_SELECTORS = [
+            (By.CSS_SELECTOR, "button[type='submit']"),
+            (By.CSS_SELECTOR, "input[type='submit']"),
+            (By.XPATH, "//button[contains(., 'Sign In') or contains(., 'Log In') or contains(., 'Login') or contains(., 'Σύνδεση') or contains(., 'Συνδεση') ]"),
+        ]
+
+        _wait_for_page_ready()
+        time.sleep(1)
         
         # Handle cookie consent popup
         try:
@@ -81,46 +136,70 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
             print(f"2nd consent button error (continuing anyway): {e}")
         
         # Wait a bit for page to settle after consent clicks
-        time.sleep(2)
-        
-        # Find login form elements
-        print("Looking for login form...")
-        try:
-            username_input = WebDriverWait(driver, 15).until(
-                EC.presence_of_element_located((By.ID, 'inputUsername'))
-            )
-            print("✓ Found username field")
-        except TimeoutException:
-            print("❌ Could not find username field")
-            driver.save_screenshot("login_form_error.png")
-            with open("login_form_page.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-            raise RuntimeError("Login form not found. Saved debug files.")
-        
-        password_input = driver.find_element(By.ID, 'inputPassword')
-        print("✓ Found password field")
-        
-        signin_button = driver.find_element(By.XPATH, '//button[contains(text(), "Sign In")]')
-        print("✓ Found sign-in button")
-        
-        # Enter credentials
-        print("Entering credentials...")
-        username_input.clear()
-        username_input.send_keys(username)
-        
-        password_input.clear()
-        password_input.send_keys(password)
-        
+        _wait_for_page_ready()
         time.sleep(1)
+
+        # If already authenticated, skip form handling.
+        if _is_logged_in():
+            print("✓ Session appears already authenticated")
+            username_input = None
+            password_input = None
+            signin_button = None
+        else:
+            # Find login form elements with fallback selectors.
+            print("Looking for login form...")
+            username_input = _find_first(USERNAME_SELECTORS, timeout=8, condition="presence")
+            password_input = _find_first(PASSWORD_SELECTORS, timeout=8, condition="presence")
+            signin_button = _find_first(SUBMIT_SELECTORS, timeout=5, condition="clickable")
+
+            if not username_input:
+                print("❌ Could not find username field")
+            else:
+                print("✓ Found username field")
+            if not password_input:
+                print("❌ Could not find password field")
+            else:
+                print("✓ Found password field")
+
+            if not username_input or not password_input:
+                # Last chance: if login succeeded with a sticky cookie/session, proceed.
+                if _is_logged_in():
+                    print("⚠️  Login form not detected, but user appears already logged in")
+                    username_input = None
+                    password_input = None
+                else:
+                    driver.save_screenshot("login_form_error.png")
+                    with open("login_form_page.html", "w", encoding="utf-8") as f:
+                        f.write(driver.page_source)
+                    raise RuntimeError("Login form not found. Saved debug files.")
+
+            if signin_button:
+                print("✓ Found sign-in button")
+            else:
+                print("⚠️  Could not find sign-in button, will submit via password field")
         
-        # Click sign in
-        print("Clicking Sign In...")
-        signin_button.click()
+        # Enter credentials only if login form exists.
+        if username_input and password_input:
+            print("Entering credentials...")
+            username_input.clear()
+            username_input.send_keys(username)
+
+            password_input.clear()
+            password_input.send_keys(password)
+
+            time.sleep(1)
+
+            # Click sign in (or submit fallback).
+            print("Submitting login...")
+            if signin_button:
+                signin_button.click()
+            else:
+                password_input.submit()
         
         # Wait for login to complete - look for user profile link
         print("Waiting for login to complete...")
         try:
-            WebDriverWait(driver, 20).until(
+            wait.until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="/user/"]'))
             )
             print("✅ Login successful!")
