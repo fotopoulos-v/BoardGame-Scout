@@ -11,6 +11,44 @@ import os
 import re
 from html import unescape
 
+def _try_requests_login(username, password):
+    """Authenticate against BGG's JSON login API using requests (no browser needed).
+
+    Returns a requests.Session carrying the auth cookies on success, or None on failure.
+    This lets the Selenium browser skip the login form entirely — the most reliable
+    approach in CI environments where bot-detection can block the form.
+    """
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': (
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        ),
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'Origin': 'https://boardgamegeek.com',
+        'Referer': 'https://boardgamegeek.com/login',
+    })
+    try:
+        resp = session.post(
+            'https://boardgamegeek.com/login/api/v1',
+            json={'credentials': {'username': username, 'password': password}},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            print(f"  API login returned HTTP {resp.status_code}")
+            return None
+        cookie_names = {c.name for c in session.cookies}
+        if not cookie_names:
+            print("  API login: no cookies received in response")
+            return None
+        print(f"  ✓ API login successful — cookies received: {cookie_names}")
+        return session
+    except Exception as e:
+        print(f"  API login error: {e}")
+        return None
+
+
 def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ranks.zip"):
     """Download BGG CSV using Selenium with Chrome."""
     
@@ -40,22 +78,22 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
     # driver = webdriver.Chrome(options=options)
     service = Service(ChromeDriverManager().install())
     driver = webdriver.Chrome(service=service, options=options)
-    
-
-    driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")  # added this for cloudflare
-
-
 
     try:
+        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")  # avoid cloudflare webdriver detection
+
         # Navigate to login page
         print("Navigating to login page...")
         driver.get(login_url)
         wait = WebDriverWait(driver, 20)
 
         def _wait_for_page_ready(timeout=20):
-            WebDriverWait(driver, timeout).until(
-                lambda d: d.execute_script("return document.readyState") == "complete"
-            )
+            try:
+                WebDriverWait(driver, timeout).until(
+                    lambda d: d.execute_script("return document.readyState") == "complete"
+                )
+            except TimeoutException:
+                print(f"  ⚠️  Page readyState timeout after {timeout}s, continuing anyway")
 
         def _find_first(selectors, timeout=5, condition="presence"):
             for by, value in selectors:
@@ -101,7 +139,8 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         SUBMIT_SELECTORS = [
             (By.CSS_SELECTOR, "button[type='submit']"),
             (By.CSS_SELECTOR, "input[type='submit']"),
-            (By.XPATH, "//button[contains(., 'Sign In') or contains(., 'Log In') or contains(., 'Login') or contains(., 'Σύνδεση') or contains(., 'Συνδεση') ]"),
+            (By.XPATH, "//button[contains(., 'Sign In') or contains(., 'Log In') or contains(., 'Login')]"),
+            (By.CSS_SELECTOR, "form button"),
         ]
 
         _wait_for_page_ready()
@@ -139,7 +178,33 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         _wait_for_page_ready()
         time.sleep(1)
 
-        # If already authenticated, skip form handling.
+        # Try to pre-authenticate via BGG's JSON API and inject the resulting cookies
+        # into the Selenium browser. This bypasses the login form entirely, which is
+        # unreliable in CI environments due to bot-detection / markup changes.
+        print("Trying API-based pre-authentication (BGG JSON API)...")
+        _api_session = _try_requests_login(username, password)
+        if _api_session:
+            _injected = 0
+            for _c in _api_session.cookies:
+                try:
+                    driver.add_cookie({
+                        'name': _c.name,
+                        'value': _c.value,
+                        'domain': _c.domain or '.boardgamegeek.com',
+                        'path': getattr(_c, 'path', '/') or '/',
+                    })
+                    _injected += 1
+                except Exception:
+                    pass
+            if _injected:
+                print(f"  ✓ Injected {_injected} cookie(s); refreshing page to apply session")
+                driver.refresh()
+                _wait_for_page_ready()
+                time.sleep(2)
+        else:
+            print("  API pre-auth unavailable — will try login form")
+
+        # If already authenticated (via injected cookies or sticky session), skip form handling.
         if _is_logged_in():
             print("✓ Session appears already authenticated")
             username_input = None
@@ -148,9 +213,35 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         else:
             # Find login form elements with fallback selectors.
             print("Looking for login form...")
-            username_input = _find_first(USERNAME_SELECTORS, timeout=8, condition="presence")
-            password_input = _find_first(PASSWORD_SELECTORS, timeout=8, condition="presence")
-            signin_button = _find_first(SUBMIT_SELECTORS, timeout=5, condition="clickable")
+            print(f"  Page title: {driver.title!r}  URL: {driver.current_url!r}")
+            # Wait for ANY input to appear before trying specific selectors.
+            try:
+                WebDriverWait(driver, 25).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "input"))
+                )
+                print("  ✓ At least one input field is present on the page")
+            except TimeoutException:
+                n_inputs = driver.execute_script("return document.querySelectorAll('input').length")
+                print(f"  ⚠️  No inputs found after 25s wait — inputs_via_js={n_inputs}")
+
+            username_input = _find_first(USERNAME_SELECTORS, timeout=20, condition="presence")
+            password_input = _find_first(PASSWORD_SELECTORS, timeout=20, condition="presence")
+            signin_button = _find_first(SUBMIT_SELECTORS, timeout=10, condition="clickable")
+
+            # Last resort: JavaScript-based element discovery
+            if not username_input:
+                username_input = driver.execute_script(
+                    "return document.querySelector("
+                    "'input[name=\"username\"], input[type=\"text\"], input[type=\"email\"]')"
+                )
+                if username_input:
+                    print("  ✓ Username field found via JS")
+            if not password_input:
+                password_input = driver.execute_script(
+                    "return document.querySelector('input[type=\"password\"]')"
+                )
+                if password_input:
+                    print("  ✓ Password field found via JS")
 
             if not username_input:
                 print("❌ Could not find username field")
