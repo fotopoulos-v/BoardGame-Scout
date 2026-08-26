@@ -40,6 +40,7 @@ jobs:
         env:
           BGG_USERNAME: ${{ secrets.BGG_USERNAME }}
           BGG_PASSWORD: ${{ secrets.BGG_PASSWORD }}
+          BGG_COOKIES: ${{ secrets.BGG_COOKIES }}
         run: |
           xvfb-run python bg_ranks_csv_download.py
 
@@ -119,6 +120,7 @@ jobs:
             login_form_page.html
             login_failed.png
             login_failed_page.html
+            login_api_403.html
             error_page_source.html
           retention-days: 7
 

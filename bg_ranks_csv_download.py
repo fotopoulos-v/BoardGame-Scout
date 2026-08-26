@@ -9,6 +9,7 @@ from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 import re
+import json
 from html import unescape
 
 _BROWSER_LOGIN_JS = """
@@ -21,7 +22,7 @@ fetch('/login/api/v1', {
     headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
     body: JSON.stringify({credentials: {username: username, password: password}})
 }).then(function (r) {
-    return r.text().then(function (t) { done({status: r.status, body: t.slice(0, 500)}); });
+    return r.text().then(function (t) { done({status: r.status, body: t.slice(0, 4000)}); });
 }).catch(function (e) { done({status: -1, body: String(e)}); });
 """
 
@@ -49,6 +50,54 @@ def _current_user(driver):
     """Ask BGG who it thinks we are: {'loggedIn': bool, 'username': str|None, ...}."""
     driver.set_script_timeout(60)
     return driver.execute_async_script(_CURRENT_USER_JS)
+
+
+def _report_cf_block(body, filename="login_api_403.html"):
+    """Save a Cloudflare block/challenge page and summarise why it fired."""
+    try:
+        with open(filename, "w", encoding="utf-8") as f:
+            f.write(body)
+    except Exception:
+        pass
+    code = re.search(r"Error\s*(\d{4})", body)
+    ray = re.search(r"Ray ID:\s*</?[^>]*>?\s*<code>([0-9a-f]+)", body) or \
+          re.search(r"data-ray=\"([0-9a-f]+)\"", body)
+    kind = "managed challenge (solvable in-browser)" if "Just a moment" in body \
+        else "hard firewall block" if code else "unknown"
+    print(f"  Cloudflare {kind}"
+          f"{' - error ' + code.group(1) if code else ''}"
+          f"{' - ray ' + ray.group(1) if ray else ''}")
+    print(f"  full block page saved to {filename}")
+
+
+def _inject_session_cookies(driver, raw):
+    """Load a pre-captured BGG session from the BGG_COOKIES secret.
+
+    Cloudflare blocks POST /login/api/v1 from datacenter IPs, so a CI runner
+    cannot log in at all. Plain GETs are not blocked, so a session captured
+    elsewhere (see capture_bgg_session.py) works fine once injected.
+    Accepts either a JSON list of cookie dicts or a "name=value; name=value" string.
+    """
+    raw = raw.strip()
+    if raw.startswith("["):
+        pairs = [(c["name"], c["value"]) for c in json.loads(raw)]
+    else:
+        pairs = [
+            (part.split("=", 1)[0].strip(), part.split("=", 1)[1].strip())
+            for part in raw.split(";") if "=" in part
+        ]
+    injected = 0
+    for name, value in pairs:
+        try:
+            driver.add_cookie({
+                "name": name, "value": value,
+                "domain": ".boardgamegeek.com", "path": "/",
+            })
+            injected += 1
+        except Exception as e:
+            print(f"  could not set cookie {name!r}: {e}")
+    print(f"  injected {injected} cookie(s) from BGG_COOKIES")
+    return injected
 
 
 def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ranks.zip"):
@@ -179,31 +228,67 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         _wait_for_page_ready()
         time.sleep(1)
 
-        # Log in through BGG's JSON API from inside the browser. The page has
-        # already cleared Cloudflare, so this request is accepted where the same
-        # call made with `requests` from a CI runner is answered with HTTP 403.
-        print("Logging in via BGG's JSON API (from inside the browser)...")
         api_logged_in = False
-        try:
-            result = _browser_api_login(driver, username, password) or {}
-            status = result.get("status")
-            body = result.get("body", "")
-            print(f"  login API responded HTTP {status}: {body[:200]}")
-            if status in (200, 204):
-                api_logged_in = _is_logged_in()
-                if not api_logged_in:
-                    print("  ⚠️  API reported success but the session is still anonymous")
-            elif status == 400 and "invalid username or password" in body.lower():
-                raise RuntimeError(
-                    "BGG rejected the credentials (HTTP 400 'Invalid username or password'). "
-                    "Check the BGG_USERNAME / BGG_PASSWORD repository secrets."
-                )
-            else:
+
+        # Preferred path in CI: reuse a session captured on an unblocked network.
+        cookie_blob = os.getenv("BGG_COOKIES")
+        if cookie_blob:
+            print("Restoring session from BGG_COOKIES...")
+            try:
+                if _inject_session_cookies(driver, cookie_blob):
+                    driver.refresh()
+                    _wait_for_page_ready()
+                    api_logged_in = _is_logged_in()
+                    if not api_logged_in:
+                        print("  ⚠️  cookies did not yield a session (expired?) — trying to log in")
+            except Exception as e:
+                print(f"  could not restore session: {e}")
+        else:
+            print("BGG_COOKIES not set — will log in with username/password")
+
+        # Log in through BGG's JSON API from inside the browser.
+        if not api_logged_in:
+            print("Logging in via BGG's JSON API (from inside the browser)...")
+            for attempt in (1, 2):
+                try:
+                    result = _browser_api_login(driver, username, password) or {}
+                    status = result.get("status")
+                    body = result.get("body", "")
+                    print(f"  attempt {attempt}: login API responded HTTP {status}")
+                    if status in (200, 204):
+                        api_logged_in = _is_logged_in()
+                        if not api_logged_in:
+                            print("  ⚠️  API reported success but the session is still anonymous")
+                        break
+                    if status == 400 and "invalid username or password" in body.lower():
+                        raise RuntimeError(
+                            "BGG rejected the credentials (HTTP 400 'Invalid username or "
+                            "password'). Check the BGG_USERNAME / BGG_PASSWORD secrets."
+                        )
+                    print(f"  body: {body[:200]}")
+                    if status == 403:
+                        _report_cf_block(body)
+                        if attempt == 1:
+                            # A managed challenge can only run its JavaScript during a real
+                            # navigation, not inside fetch(). Visit the endpoint directly so
+                            # Chrome can solve it and pick up a cf_clearance cookie, then retry.
+                            print("  warming up Cloudflare clearance via direct navigation...")
+                            driver.get("https://boardgamegeek.com/login/api/v1")
+                            time.sleep(8)
+                            names = {c["name"] for c in driver.get_cookies()}
+                            print(f"  cookies now: {sorted(names)}")
+                            print(f"  cf_clearance obtained: {'cf_clearance' in names}")
+                            driver.get(login_url)
+                            _wait_for_page_ready()
+                            continue
+                    break
+                except RuntimeError:
+                    raise
+                except Exception as e:
+                    print(f"  API login error: {e}")
+                    break
+            if not api_logged_in:
                 print("  API login did not succeed — falling back to the login form")
-        except RuntimeError:
-            raise
-        except Exception as e:
-            print(f"  API login error: {e} — falling back to the login form")
 
         # If already authenticated, skip form handling.
         if api_logged_in:
@@ -313,7 +398,10 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
                     "Check the BGG_USERNAME / BGG_PASSWORD repository secrets."
                 )
             raise RuntimeError(
-                f"Login failed - session is still anonymous (url: {driver.current_url})"
+                "Login failed - session is still anonymous "
+                f"(url: {driver.current_url}). If the log shows HTTP 403 from the login "
+                "API, Cloudflare is blocking logins from this runner's IP range; capture "
+                "a session with capture_bgg_session.py and set the BGG_COOKIES secret."
             )
         
         # Navigate to download page
