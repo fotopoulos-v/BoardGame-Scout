@@ -5,103 +5,48 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.chrome.service import Service
-try:
-    from webdriver_manager.chrome import ChromeDriverManager
-except ImportError:
-    # Selenium 4.6+ resolves the driver itself via Selenium Manager.
-    ChromeDriverManager = None
+from webdriver_manager.chrome import ChromeDriverManager
 import time
 import os
 import re
-import json
 from html import unescape
 
-_BROWSER_LOGIN_JS = """
-const done = arguments[arguments.length - 1];
-const username = arguments[0];
-const password = arguments[1];
-fetch('/login/api/v1', {
-    method: 'POST',
-    credentials: 'include',
-    headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-    body: JSON.stringify({credentials: {username: username, password: password}})
-}).then(function (r) {
-    return r.text().then(function (t) { done({status: r.status, body: t.slice(0, 4000)}); });
-}).catch(function (e) { done({status: -1, body: String(e)}); });
-"""
+def _try_requests_login(username, password):
+    """Authenticate against BGG's JSON login API using requests (no browser needed).
 
-_CURRENT_USER_JS = """
-const done = arguments[arguments.length - 1];
-fetch('/api/users/current', {credentials: 'include', headers: {'Accept': 'application/json'}})
-    .then(function (r) { return r.json(); })
-    .then(function (j) { done(j); })
-    .catch(function (e) { done({loggedIn: false, error: String(e)}); });
-"""
-
-
-def _browser_api_login(driver, username, password):
-    """POST to BGG's JSON login API from inside the browser page.
-
-    Running the request in-page means it inherits the Cloudflare clearance the
-    browser already earned when it loaded the page. A plain `requests` call from
-    a CI runner has no such clearance and BGG answers it with HTTP 403.
+    Returns a requests.Session carrying the auth cookies on success, or None on failure.
+    This lets the Selenium browser skip the login form entirely — the most reliable
+    approach in CI environments where bot-detection can block the form.
     """
-    driver.set_script_timeout(60)
-    return driver.execute_async_script(_BROWSER_LOGIN_JS, username, password)
-
-
-def _current_user(driver):
-    """Ask BGG who it thinks we are: {'loggedIn': bool, 'username': str|None, ...}."""
-    driver.set_script_timeout(60)
-    return driver.execute_async_script(_CURRENT_USER_JS)
-
-
-def _report_cf_block(body, filename="login_api_403.html"):
-    """Save a Cloudflare block/challenge page and summarise why it fired."""
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': (
+            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
+            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
+        ),
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'Origin': 'https://boardgamegeek.com',
+        'Referer': 'https://boardgamegeek.com/login',
+    })
     try:
-        with open(filename, "w", encoding="utf-8") as f:
-            f.write(body)
-    except Exception:
-        pass
-    code = re.search(r"Error\s*(\d{4})", body)
-    ray = re.search(r"Ray ID:\s*</?[^>]*>?\s*<code>([0-9a-f]+)", body) or \
-          re.search(r"data-ray=\"([0-9a-f]+)\"", body)
-    kind = "managed challenge (solvable in-browser)" if "Just a moment" in body \
-        else "hard firewall block" if code else "unknown"
-    print(f"  Cloudflare {kind}"
-          f"{' - error ' + code.group(1) if code else ''}"
-          f"{' - ray ' + ray.group(1) if ray else ''}")
-    print(f"  full block page saved to {filename}")
-
-
-def _inject_session_cookies(driver, raw):
-    """Load a pre-captured BGG session from the BGG_COOKIES secret.
-
-    Cloudflare blocks POST /login/api/v1 from datacenter IPs, so a CI runner
-    cannot log in at all. Plain GETs are not blocked, so a session captured
-    elsewhere (see capture_bgg_session.py) works fine once injected.
-    Accepts either a JSON list of cookie dicts or a "name=value; name=value" string.
-    """
-    raw = raw.strip()
-    if raw.startswith("["):
-        pairs = [(c["name"], c["value"]) for c in json.loads(raw)]
-    else:
-        pairs = [
-            (part.split("=", 1)[0].strip(), part.split("=", 1)[1].strip())
-            for part in raw.split(";") if "=" in part
-        ]
-    injected = 0
-    for name, value in pairs:
-        try:
-            driver.add_cookie({
-                "name": name, "value": value,
-                "domain": ".boardgamegeek.com", "path": "/",
-            })
-            injected += 1
-        except Exception as e:
-            print(f"  could not set cookie {name!r}: {e}")
-    print(f"  injected {injected} cookie(s) from BGG_COOKIES")
-    return injected
+        resp = session.post(
+            'https://boardgamegeek.com/login/api/v1',
+            json={'credentials': {'username': username, 'password': password}},
+            timeout=30,
+        )
+        if resp.status_code != 200:
+            print(f"  API login returned HTTP {resp.status_code}")
+            return None
+        cookie_names = {c.name for c in session.cookies}
+        if not cookie_names:
+            print("  API login: no cookies received in response")
+            return None
+        print(f"  ✓ API login successful — cookies received: {cookie_names}")
+        return session
+    except Exception as e:
+        print(f"  API login error: {e}")
+        return None
 
 
 def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ranks.zip"):
@@ -131,10 +76,8 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
 
     
     # driver = webdriver.Chrome(options=options)
-    if ChromeDriverManager is not None:
-        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-    else:
-        driver = webdriver.Chrome(options=options)
+    service = Service(ChromeDriverManager().install())
+    driver = webdriver.Chrome(service=service, options=options)
 
     try:
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")  # avoid cloudflare webdriver detection
@@ -142,6 +85,7 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         # Navigate to login page
         print("Navigating to login page...")
         driver.get(login_url)
+        wait = WebDriverWait(driver, 20)
 
         def _wait_for_page_ready(timeout=20):
             try:
@@ -166,16 +110,16 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
             return None
 
         def _is_logged_in():
-            """Authoritative session check - the header DOM is too easy to misread."""
-            try:
-                info = _current_user(driver)
-            except Exception as e:
-                print(f"  session check failed: {e}")
-                return False
-            if isinstance(info, dict) and info.get("loggedIn"):
-                print(f"  session check: logged in as {info.get('username')!r}")
-                return True
-            return False
+            page_lower = driver.page_source.lower()
+            return (
+                _find_first([
+                    (By.CSS_SELECTOR, 'a[href*="/user/"]'),
+                    (By.CSS_SELECTOR, 'a[href*="/logout"]'),
+                    (By.CSS_SELECTOR, '[data-testid="user-menu"], [aria-label*="account" i]'),
+                ], timeout=2) is not None
+                or "sign out" in page_lower
+                or "logout" in page_lower
+            )
 
         USERNAME_SELECTORS = [
             (By.NAME, "username"),
@@ -234,71 +178,35 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         _wait_for_page_ready()
         time.sleep(1)
 
-        api_logged_in = False
-
-        # Preferred path in CI: reuse a session captured on an unblocked network.
-        cookie_blob = os.getenv("BGG_COOKIES")
-        if cookie_blob:
-            print("Restoring session from BGG_COOKIES...")
-            try:
-                if _inject_session_cookies(driver, cookie_blob):
-                    driver.refresh()
-                    _wait_for_page_ready()
-                    api_logged_in = _is_logged_in()
-                    if not api_logged_in:
-                        print("  ⚠️  cookies did not yield a session (expired?) — trying to log in")
-            except Exception as e:
-                print(f"  could not restore session: {e}")
-        else:
-            print("BGG_COOKIES not set — will log in with username/password")
-
-        # Log in through BGG's JSON API from inside the browser.
-        if not api_logged_in:
-            print("Logging in via BGG's JSON API (from inside the browser)...")
-            for attempt in (1, 2):
+        # Try to pre-authenticate via BGG's JSON API and inject the resulting cookies
+        # into the Selenium browser. This bypasses the login form entirely, which is
+        # unreliable in CI environments due to bot-detection / markup changes.
+        print("Trying API-based pre-authentication (BGG JSON API)...")
+        _api_session = _try_requests_login(username, password)
+        if _api_session:
+            _injected = 0
+            for _c in _api_session.cookies:
                 try:
-                    result = _browser_api_login(driver, username, password) or {}
-                    status = result.get("status")
-                    body = result.get("body", "")
-                    print(f"  attempt {attempt}: login API responded HTTP {status}")
-                    if status in (200, 204):
-                        api_logged_in = _is_logged_in()
-                        if not api_logged_in:
-                            print("  ⚠️  API reported success but the session is still anonymous")
-                        break
-                    if status == 400 and "invalid username or password" in body.lower():
-                        raise RuntimeError(
-                            "BGG rejected the credentials (HTTP 400 'Invalid username or "
-                            "password'). Check the BGG_USERNAME / BGG_PASSWORD secrets."
-                        )
-                    print(f"  body: {body[:200]}")
-                    if status == 403:
-                        _report_cf_block(body)
-                        if attempt == 1:
-                            # A managed challenge can only run its JavaScript during a real
-                            # navigation, not inside fetch(). Visit the endpoint directly so
-                            # Chrome can solve it and pick up a cf_clearance cookie, then retry.
-                            print("  warming up Cloudflare clearance via direct navigation...")
-                            driver.get("https://boardgamegeek.com/login/api/v1")
-                            time.sleep(8)
-                            names = {c["name"] for c in driver.get_cookies()}
-                            print(f"  cookies now: {sorted(names)}")
-                            print(f"  cf_clearance obtained: {'cf_clearance' in names}")
-                            driver.get(login_url)
-                            _wait_for_page_ready()
-                            continue
-                    break
-                except RuntimeError:
-                    raise
-                except Exception as e:
-                    print(f"  API login error: {e}")
-                    break
-            if not api_logged_in:
-                print("  API login did not succeed — falling back to the login form")
+                    driver.add_cookie({
+                        'name': _c.name,
+                        'value': _c.value,
+                        'domain': _c.domain or '.boardgamegeek.com',
+                        'path': getattr(_c, 'path', '/') or '/',
+                    })
+                    _injected += 1
+                except Exception:
+                    pass
+            if _injected:
+                print(f"  ✓ Injected {_injected} cookie(s); refreshing page to apply session")
+                driver.refresh()
+                _wait_for_page_ready()
+                time.sleep(2)
+        else:
+            print("  API pre-auth unavailable — will try login form")
 
-        # If already authenticated, skip form handling.
-        if api_logged_in:
-            print("✓ Session authenticated via the API")
+        # If already authenticated (via injected cookies or sticky session), skip form handling.
+        if _is_logged_in():
+            print("✓ Session appears already authenticated")
             username_input = None
             password_input = None
             signin_button = None
@@ -379,36 +287,30 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
             else:
                 password_input.submit()
         
-        # Confirm the session with BGG itself rather than scraping the header DOM.
-        print("Verifying login...")
-        logged_in = api_logged_in
-        if not logged_in:
-            deadline = time.time() + 30
-            while True:
-                if _is_logged_in():
-                    logged_in = True
-                    break
-                if time.time() >= deadline:
-                    break
-                time.sleep(3)
-
-        if logged_in:
-            print("✅ Login successful!")
-        else:
-            driver.save_screenshot("login_failed.png")
-            with open("login_failed_page.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-            if "invalid username or password" in driver.page_source.lower():
-                raise RuntimeError(
-                    "Login failed - BGG rejected the credentials. "
-                    "Check the BGG_USERNAME / BGG_PASSWORD repository secrets."
-                )
-            raise RuntimeError(
-                "Login failed - session is still anonymous "
-                f"(url: {driver.current_url}). If the log shows HTTP 403 from the login "
-                "API, Cloudflare is blocking logins from this runner's IP range; capture "
-                "a session with capture_bgg_session.py and set the BGG_COOKIES secret."
+        # Wait for login to complete - look for user profile link
+        print("Waiting for login to complete...")
+        try:
+            wait.until(
+                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="/user/"]'))
             )
+            print("✅ Login successful!")
+        except TimeoutException:
+            # Check if we're still on login page or if there's an error
+            current_url = driver.current_url
+            page_text = driver.page_source.lower()
+            
+            if "login" in current_url:
+                driver.save_screenshot("login_failed.png")
+                with open("login_failed_page.html", "w", encoding="utf-8") as f:
+                    f.write(driver.page_source)
+                
+                if "invalid" in page_text or "incorrect" in page_text:
+                    raise RuntimeError("Login failed - invalid credentials")
+                else:
+                    raise RuntimeError("Login failed - still on login page")
+            else:
+                # We may have redirected successfully, proceed
+                print("⚠️  Couldn't verify login element, but URL changed - proceeding...")
         
         # Navigate to download page
         print("\nNavigating to download page...")
