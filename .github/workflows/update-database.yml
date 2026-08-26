@@ -117,6 +117,8 @@ jobs:
             error_screenshot.png
             login_form_error.png
             login_form_page.html
+            login_failed.png
+            login_failed_page.html
             error_page_source.html
           retention-days: 7
 

@@ -11,42 +11,44 @@ import os
 import re
 from html import unescape
 
-def _try_requests_login(username, password):
-    """Authenticate against BGG's JSON login API using requests (no browser needed).
+_BROWSER_LOGIN_JS = """
+const done = arguments[arguments.length - 1];
+const username = arguments[0];
+const password = arguments[1];
+fetch('/login/api/v1', {
+    method: 'POST',
+    credentials: 'include',
+    headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+    body: JSON.stringify({credentials: {username: username, password: password}})
+}).then(function (r) {
+    return r.text().then(function (t) { done({status: r.status, body: t.slice(0, 500)}); });
+}).catch(function (e) { done({status: -1, body: String(e)}); });
+"""
 
-    Returns a requests.Session carrying the auth cookies on success, or None on failure.
-    This lets the Selenium browser skip the login form entirely — the most reliable
-    approach in CI environments where bot-detection can block the form.
+_CURRENT_USER_JS = """
+const done = arguments[arguments.length - 1];
+fetch('/api/users/current', {credentials: 'include', headers: {'Accept': 'application/json'}})
+    .then(function (r) { return r.json(); })
+    .then(function (j) { done(j); })
+    .catch(function (e) { done({loggedIn: false, error: String(e)}); });
+"""
+
+
+def _browser_api_login(driver, username, password):
+    """POST to BGG's JSON login API from inside the browser page.
+
+    Running the request in-page means it inherits the Cloudflare clearance the
+    browser already earned when it loaded the page. A plain `requests` call from
+    a CI runner has no such clearance and BGG answers it with HTTP 403.
     """
-    session = requests.Session()
-    session.headers.update({
-        'User-Agent': (
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        ),
-        'Accept': 'application/json, text/plain, */*',
-        'Content-Type': 'application/json',
-        'Origin': 'https://boardgamegeek.com',
-        'Referer': 'https://boardgamegeek.com/login',
-    })
-    try:
-        resp = session.post(
-            'https://boardgamegeek.com/login/api/v1',
-            json={'credentials': {'username': username, 'password': password}},
-            timeout=30,
-        )
-        if resp.status_code != 200:
-            print(f"  API login returned HTTP {resp.status_code}")
-            return None
-        cookie_names = {c.name for c in session.cookies}
-        if not cookie_names:
-            print("  API login: no cookies received in response")
-            return None
-        print(f"  ✓ API login successful — cookies received: {cookie_names}")
-        return session
-    except Exception as e:
-        print(f"  API login error: {e}")
-        return None
+    driver.set_script_timeout(60)
+    return driver.execute_async_script(_BROWSER_LOGIN_JS, username, password)
+
+
+def _current_user(driver):
+    """Ask BGG who it thinks we are: {'loggedIn': bool, 'username': str|None, ...}."""
+    driver.set_script_timeout(60)
+    return driver.execute_async_script(_CURRENT_USER_JS)
 
 
 def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ranks.zip"):
@@ -85,7 +87,6 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         # Navigate to login page
         print("Navigating to login page...")
         driver.get(login_url)
-        wait = WebDriverWait(driver, 20)
 
         def _wait_for_page_ready(timeout=20):
             try:
@@ -110,16 +111,16 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
             return None
 
         def _is_logged_in():
-            page_lower = driver.page_source.lower()
-            return (
-                _find_first([
-                    (By.CSS_SELECTOR, 'a[href*="/user/"]'),
-                    (By.CSS_SELECTOR, 'a[href*="/logout"]'),
-                    (By.CSS_SELECTOR, '[data-testid="user-menu"], [aria-label*="account" i]'),
-                ], timeout=2) is not None
-                or "sign out" in page_lower
-                or "logout" in page_lower
-            )
+            """Authoritative session check - the header DOM is too easy to misread."""
+            try:
+                info = _current_user(driver)
+            except Exception as e:
+                print(f"  session check failed: {e}")
+                return False
+            if isinstance(info, dict) and info.get("loggedIn"):
+                print(f"  session check: logged in as {info.get('username')!r}")
+                return True
+            return False
 
         USERNAME_SELECTORS = [
             (By.NAME, "username"),
@@ -178,35 +179,35 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
         _wait_for_page_ready()
         time.sleep(1)
 
-        # Try to pre-authenticate via BGG's JSON API and inject the resulting cookies
-        # into the Selenium browser. This bypasses the login form entirely, which is
-        # unreliable in CI environments due to bot-detection / markup changes.
-        print("Trying API-based pre-authentication (BGG JSON API)...")
-        _api_session = _try_requests_login(username, password)
-        if _api_session:
-            _injected = 0
-            for _c in _api_session.cookies:
-                try:
-                    driver.add_cookie({
-                        'name': _c.name,
-                        'value': _c.value,
-                        'domain': _c.domain or '.boardgamegeek.com',
-                        'path': getattr(_c, 'path', '/') or '/',
-                    })
-                    _injected += 1
-                except Exception:
-                    pass
-            if _injected:
-                print(f"  ✓ Injected {_injected} cookie(s); refreshing page to apply session")
-                driver.refresh()
-                _wait_for_page_ready()
-                time.sleep(2)
-        else:
-            print("  API pre-auth unavailable — will try login form")
+        # Log in through BGG's JSON API from inside the browser. The page has
+        # already cleared Cloudflare, so this request is accepted where the same
+        # call made with `requests` from a CI runner is answered with HTTP 403.
+        print("Logging in via BGG's JSON API (from inside the browser)...")
+        api_logged_in = False
+        try:
+            result = _browser_api_login(driver, username, password) or {}
+            status = result.get("status")
+            body = result.get("body", "")
+            print(f"  login API responded HTTP {status}: {body[:200]}")
+            if status in (200, 204):
+                api_logged_in = _is_logged_in()
+                if not api_logged_in:
+                    print("  ⚠️  API reported success but the session is still anonymous")
+            elif status == 400 and "invalid username or password" in body.lower():
+                raise RuntimeError(
+                    "BGG rejected the credentials (HTTP 400 'Invalid username or password'). "
+                    "Check the BGG_USERNAME / BGG_PASSWORD repository secrets."
+                )
+            else:
+                print("  API login did not succeed — falling back to the login form")
+        except RuntimeError:
+            raise
+        except Exception as e:
+            print(f"  API login error: {e} — falling back to the login form")
 
-        # If already authenticated (via injected cookies or sticky session), skip form handling.
-        if _is_logged_in():
-            print("✓ Session appears already authenticated")
+        # If already authenticated, skip form handling.
+        if api_logged_in:
+            print("✓ Session authenticated via the API")
             username_input = None
             password_input = None
             signin_button = None
@@ -287,30 +288,33 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
             else:
                 password_input.submit()
         
-        # Wait for login to complete - look for user profile link
-        print("Waiting for login to complete...")
-        try:
-            wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="/user/"]'))
-            )
+        # Confirm the session with BGG itself rather than scraping the header DOM.
+        print("Verifying login...")
+        logged_in = api_logged_in
+        if not logged_in:
+            deadline = time.time() + 30
+            while True:
+                if _is_logged_in():
+                    logged_in = True
+                    break
+                if time.time() >= deadline:
+                    break
+                time.sleep(3)
+
+        if logged_in:
             print("✅ Login successful!")
-        except TimeoutException:
-            # Check if we're still on login page or if there's an error
-            current_url = driver.current_url
-            page_text = driver.page_source.lower()
-            
-            if "login" in current_url:
-                driver.save_screenshot("login_failed.png")
-                with open("login_failed_page.html", "w", encoding="utf-8") as f:
-                    f.write(driver.page_source)
-                
-                if "invalid" in page_text or "incorrect" in page_text:
-                    raise RuntimeError("Login failed - invalid credentials")
-                else:
-                    raise RuntimeError("Login failed - still on login page")
-            else:
-                # We may have redirected successfully, proceed
-                print("⚠️  Couldn't verify login element, but URL changed - proceeding...")
+        else:
+            driver.save_screenshot("login_failed.png")
+            with open("login_failed_page.html", "w", encoding="utf-8") as f:
+                f.write(driver.page_source)
+            if "invalid username or password" in driver.page_source.lower():
+                raise RuntimeError(
+                    "Login failed - BGG rejected the credentials. "
+                    "Check the BGG_USERNAME / BGG_PASSWORD repository secrets."
+                )
+            raise RuntimeError(
+                f"Login failed - session is still anonymous (url: {driver.current_url})"
+            )
         
         # Navigate to download page
         print("\nNavigating to download page...")
