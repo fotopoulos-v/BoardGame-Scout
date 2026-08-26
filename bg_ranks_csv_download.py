@@ -5,7 +5,11 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, NoSuchElementException
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
+try:
+    from webdriver_manager.chrome import ChromeDriverManager
+except ImportError:
+    # Selenium 4.6+ resolves the driver itself via Selenium Manager.
+    ChromeDriverManager = None
 import time
 import os
 import re
@@ -127,8 +131,10 @@ def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ran
 
     
     # driver = webdriver.Chrome(options=options)
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
+    if ChromeDriverManager is not None:
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
 
     try:
         driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")  # avoid cloudflare webdriver detection
