@@ -1,395 +1,121 @@
-import requests
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException, NoSuchElementException
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-import time
+"""Download the BGG board game ranks CSV (zipped) from the data dumps page.
+
+Logs in through BGG's JSON login API with plain requests. The previous Selenium
+flow stopped working in 2026-09: Cloudflare shows automated Chrome a "Verify you
+are human" challenge on the login page, while the login API and the data dumps
+page still answer normal HTTP requests (from a home IP; GitHub runner IPs get
+403 on the login API since 2026-08-24).
+"""
+
 import os
 import re
+import sys
+import zipfile
 from html import unescape
 
-def _try_requests_login(username, password):
-    """Authenticate against BGG's JSON login API using requests (no browser needed).
+import requests
 
-    Returns a requests.Session carrying the auth cookies on success, or None on failure.
-    This lets the Selenium browser skip the login form entirely — the most reliable
-    approach in CI environments where bot-detection can block the form.
-    """
+BGG = "https://boardgamegeek.com"
+USER_AGENT = (
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/154.0.0.0 Safari/537.36"
+)
+DOWNLOAD_LINK_PATTERN = (
+    r'<a\s+href="(https://geek-export-stats\.s3\.amazonaws\.com/'
+    r'boardgames_export/boardgames_ranks_[^"]+)"'
+)
+
+
+def login(username, password):
+    """Return a requests.Session logged in to BGG, or raise RuntimeError."""
     session = requests.Session()
-    session.headers.update({
-        'User-Agent': (
-            'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36'
-        ),
-        'Accept': 'application/json, text/plain, */*',
-        'Content-Type': 'application/json',
-        'Origin': 'https://boardgamegeek.com',
-        'Referer': 'https://boardgamegeek.com/login',
-    })
-    try:
-        resp = session.post(
-            'https://boardgamegeek.com/login/api/v1',
-            json={'credentials': {'username': username, 'password': password}},
-            timeout=30,
-        )
+    session.headers["User-Agent"] = USER_AGENT
+
+    print("Logging in to BGG...")
+    resp = session.post(
+        f"{BGG}/login/api/v1",
+        json={"credentials": {"username": username, "password": password}},
+        headers={
+            "Accept": "application/json, text/plain, */*",
+            "Origin": BGG,
+            "Referer": f"{BGG}/login",
+        },
+        timeout=30,
+    )
+    # BGG answers 204 No Content on success (it used to be 200).
+    if resp.status_code == 400:
+        raise RuntimeError("Login failed - BGG rejected the username/password")
+    if resp.status_code == 403:
+        raise RuntimeError("Login failed - HTTP 403, blocked by Cloudflare")
+    if resp.status_code not in (200, 204):
+        raise RuntimeError(f"Login failed - HTTP {resp.status_code}: {resp.text[:200]}")
+
+    # The login response alone doesn't prove the session works; ask BGG.
+    current = session.get(f"{BGG}/api/users/current", timeout=30)
+    if current.status_code != 200 or not current.json().get("loggedIn"):
+        raise RuntimeError(f"Login did not stick (users/current HTTP {current.status_code})")
+    print("✅ Login successful")
+    return session
+
+
+def find_download_url(session):
+    print("Looking for download link...")
+    resp = session.get(f"{BGG}/data_dumps/bg_ranks", timeout=30)
+    if resp.status_code != 200:
+        raise RuntimeError(f"Data dumps page returned HTTP {resp.status_code}")
+
+    match = re.search(DOWNLOAD_LINK_PATTERN, resp.text)
+    if not match:
+        with open("download_page_debug.html", "w", encoding="utf-8") as f:
+            f.write(resp.text)
+        raise RuntimeError("Could not find download link. Saved page to download_page_debug.html")
+
+    url = unescape(match.group(1))
+    print(f"✓ Found download URL ({url.split('?')[0].rsplit('/', 1)[-1]})")
+    return url
+
+
+def download_zip(url, save_path):
+    print("\nDownloading CSV file...")
+    # The link is a pre-signed S3 URL, so it needs no BGG cookies.
+    with requests.get(url, stream=True, timeout=(30, 300)) as resp:
         if resp.status_code != 200:
-            print(f"  API login returned HTTP {resp.status_code}")
-            return None
-        cookie_names = {c.name for c in session.cookies}
-        if not cookie_names:
-            print("  API login: no cookies received in response")
-            return None
-        print(f"  ✓ API login successful — cookies received: {cookie_names}")
-        return session
-    except Exception as e:
-        print(f"  API login error: {e}")
-        return None
+            raise RuntimeError(f"Failed to download zip: {resp.status_code}")
 
-
-def download_bgg_csv_with_selenium(username, password, save_path="boardgames_ranks.zip"):
-    """Download BGG CSV using Selenium with Chrome."""
-    
-    print("="*60)
-    print("BGG Data Download - Automated with Selenium")
-    print("="*60)
-    
-    # Login page with redirect parameter
-    login_url = 'https://boardgamegeek.com/login?redirect_server=1'
-    
-    # Create Chrome WebDriver
-    print("Starting Chrome browser...")
-    options = webdriver.ChromeOptions()
-    # options.add_argument('--headless')  # Run without GUI
-    # options.add_argument('--no-sandbox')
-    # options.add_argument('--disable-dev-shm-usage')
-    # options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('--no-sandbox')
-    options.add_argument('--disable-dev-shm-usage')
-    options.add_argument('--disable-blink-features=AutomationControlled')
-    options.add_argument('--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36')
-    options.add_argument('--window-size=1920,1080')
-    options.add_experimental_option("excludeSwitches", ["enable-automation"])
-    options.add_experimental_option('useAutomationExtension', False)
-
-    
-    # driver = webdriver.Chrome(options=options)
-    service = Service(ChromeDriverManager().install())
-    driver = webdriver.Chrome(service=service, options=options)
-
-    try:
-        driver.execute_script("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")  # avoid cloudflare webdriver detection
-
-        # Navigate to login page
-        print("Navigating to login page...")
-        driver.get(login_url)
-        wait = WebDriverWait(driver, 20)
-
-        def _wait_for_page_ready(timeout=20):
-            try:
-                WebDriverWait(driver, timeout).until(
-                    lambda d: d.execute_script("return document.readyState") == "complete"
-                )
-            except TimeoutException:
-                print(f"  ⚠️  Page readyState timeout after {timeout}s, continuing anyway")
-
-        def _find_first(selectors, timeout=5, condition="presence"):
-            for by, value in selectors:
-                try:
-                    if condition == "clickable":
-                        return WebDriverWait(driver, timeout).until(
-                            EC.element_to_be_clickable((by, value))
-                        )
-                    return WebDriverWait(driver, timeout).until(
-                        EC.presence_of_element_located((by, value))
-                    )
-                except TimeoutException:
-                    continue
-            return None
-
-        def _is_logged_in():
-            page_lower = driver.page_source.lower()
-            return (
-                _find_first([
-                    (By.CSS_SELECTOR, 'a[href*="/user/"]'),
-                    (By.CSS_SELECTOR, 'a[href*="/logout"]'),
-                    (By.CSS_SELECTOR, '[data-testid="user-menu"], [aria-label*="account" i]'),
-                ], timeout=2) is not None
-                or "sign out" in page_lower
-                or "logout" in page_lower
-            )
-
-        USERNAME_SELECTORS = [
-            (By.NAME, "username"),
-            (By.ID, "inputUsername"),
-            (By.CSS_SELECTOR, "input[type='text'][name*='user' i]"),
-            (By.CSS_SELECTOR, "input[type='email']"),
-            (By.CSS_SELECTOR, "input[autocomplete='username']"),
-        ]
-
-        PASSWORD_SELECTORS = [
-            (By.NAME, "password"),
-            (By.ID, "inputPassword"),
-            (By.CSS_SELECTOR, "input[type='password']"),
-            (By.CSS_SELECTOR, "input[autocomplete='current-password']"),
-        ]
-
-        SUBMIT_SELECTORS = [
-            (By.CSS_SELECTOR, "button[type='submit']"),
-            (By.CSS_SELECTOR, "input[type='submit']"),
-            (By.XPATH, "//button[contains(., 'Sign In') or contains(., 'Log In') or contains(., 'Login')]"),
-            (By.CSS_SELECTOR, "form button"),
-        ]
-
-        _wait_for_page_ready()
-        time.sleep(1)
-        
-        # Handle cookie consent popup
-        try:
-            print("Looking for consent button...")
-            consent_button = WebDriverWait(driver, 10).until(
-                EC.element_to_be_clickable((
-                    By.XPATH,
-                    "//button[@aria-label=\"I'm OK with that\"]"
-                ))
-            )
-            consent_button.click()
-            print("✓ Consent button clicked")
-            time.sleep(1)
-        except TimeoutException:
-            print("No consent button found (or already dismissed)")
-        except Exception as e:
-            print(f"Consent button error (continuing anyway): {e}")
-        
-        # Try to find and click second consent button if it exists
-        try:
-            cookie_button = driver.find_element(By.XPATH, '//button[contains(text(), "I\'m OK with that")]')
-            cookie_button.click()
-            print("✓ 2nd consent button clicked")
-            time.sleep(1)
-        except NoSuchElementException:
-            print("No 2nd consent button found")
-        except Exception as e:
-            print(f"2nd consent button error (continuing anyway): {e}")
-        
-        # Wait a bit for page to settle after consent clicks
-        _wait_for_page_ready()
-        time.sleep(1)
-
-        # Try to pre-authenticate via BGG's JSON API and inject the resulting cookies
-        # into the Selenium browser. This bypasses the login form entirely, which is
-        # unreliable in CI environments due to bot-detection / markup changes.
-        print("Trying API-based pre-authentication (BGG JSON API)...")
-        _api_session = _try_requests_login(username, password)
-        if _api_session:
-            _injected = 0
-            for _c in _api_session.cookies:
-                try:
-                    driver.add_cookie({
-                        'name': _c.name,
-                        'value': _c.value,
-                        'domain': _c.domain or '.boardgamegeek.com',
-                        'path': getattr(_c, 'path', '/') or '/',
-                    })
-                    _injected += 1
-                except Exception:
-                    pass
-            if _injected:
-                print(f"  ✓ Injected {_injected} cookie(s); refreshing page to apply session")
-                driver.refresh()
-                _wait_for_page_ready()
-                time.sleep(2)
-        else:
-            print("  API pre-auth unavailable — will try login form")
-
-        # If already authenticated (via injected cookies or sticky session), skip form handling.
-        if _is_logged_in():
-            print("✓ Session appears already authenticated")
-            username_input = None
-            password_input = None
-            signin_button = None
-        else:
-            # Find login form elements with fallback selectors.
-            print("Looking for login form...")
-            print(f"  Page title: {driver.title!r}  URL: {driver.current_url!r}")
-            # Wait for ANY input to appear before trying specific selectors.
-            try:
-                WebDriverWait(driver, 25).until(
-                    EC.presence_of_element_located((By.CSS_SELECTOR, "input"))
-                )
-                print("  ✓ At least one input field is present on the page")
-            except TimeoutException:
-                n_inputs = driver.execute_script("return document.querySelectorAll('input').length")
-                print(f"  ⚠️  No inputs found after 25s wait — inputs_via_js={n_inputs}")
-
-            username_input = _find_first(USERNAME_SELECTORS, timeout=20, condition="presence")
-            password_input = _find_first(PASSWORD_SELECTORS, timeout=20, condition="presence")
-            signin_button = _find_first(SUBMIT_SELECTORS, timeout=10, condition="clickable")
-
-            # Last resort: JavaScript-based element discovery
-            if not username_input:
-                username_input = driver.execute_script(
-                    "return document.querySelector("
-                    "'input[name=\"username\"], input[type=\"text\"], input[type=\"email\"]')"
-                )
-                if username_input:
-                    print("  ✓ Username field found via JS")
-            if not password_input:
-                password_input = driver.execute_script(
-                    "return document.querySelector('input[type=\"password\"]')"
-                )
-                if password_input:
-                    print("  ✓ Password field found via JS")
-
-            if not username_input:
-                print("❌ Could not find username field")
-            else:
-                print("✓ Found username field")
-            if not password_input:
-                print("❌ Could not find password field")
-            else:
-                print("✓ Found password field")
-
-            if not username_input or not password_input:
-                # Last chance: if login succeeded with a sticky cookie/session, proceed.
-                if _is_logged_in():
-                    print("⚠️  Login form not detected, but user appears already logged in")
-                    username_input = None
-                    password_input = None
-                else:
-                    driver.save_screenshot("login_form_error.png")
-                    with open("login_form_page.html", "w", encoding="utf-8") as f:
-                        f.write(driver.page_source)
-                    raise RuntimeError("Login form not found. Saved debug files.")
-
-            if signin_button:
-                print("✓ Found sign-in button")
-            else:
-                print("⚠️  Could not find sign-in button, will submit via password field")
-        
-        # Enter credentials only if login form exists.
-        if username_input and password_input:
-            print("Entering credentials...")
-            username_input.clear()
-            username_input.send_keys(username)
-
-            password_input.clear()
-            password_input.send_keys(password)
-
-            time.sleep(1)
-
-            # Click sign in (or submit fallback).
-            print("Submitting login...")
-            if signin_button:
-                signin_button.click()
-            else:
-                password_input.submit()
-        
-        # Wait for login to complete - look for user profile link
-        print("Waiting for login to complete...")
-        try:
-            wait.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, 'a[href*="/user/"]'))
-            )
-            print("✅ Login successful!")
-        except TimeoutException:
-            # Check if we're still on login page or if there's an error
-            current_url = driver.current_url
-            page_text = driver.page_source.lower()
-            
-            if "login" in current_url:
-                driver.save_screenshot("login_failed.png")
-                with open("login_failed_page.html", "w", encoding="utf-8") as f:
-                    f.write(driver.page_source)
-                
-                if "invalid" in page_text or "incorrect" in page_text:
-                    raise RuntimeError("Login failed - invalid credentials")
-                else:
-                    raise RuntimeError("Login failed - still on login page")
-            else:
-                # We may have redirected successfully, proceed
-                print("⚠️  Couldn't verify login element, but URL changed - proceeding...")
-        
-        # Navigate to download page
-        print("\nNavigating to download page...")
-        driver.get('https://boardgamegeek.com/data_dumps/bg_ranks')
-        time.sleep(3)
-        
-        # Get page source
-        page_source = driver.page_source
-        
-        # Extract download URL
-        print("Looking for download link...")
-        pattern = r'<a\s+href="(https://geek-export-stats\.s3\.amazonaws\.com/boardgames_export/boardgames_ranks_[^"]+)"'
-        match = re.search(pattern, page_source)
-        
-        if not match:
-            with open("download_page_debug.html", "w", encoding="utf-8") as f:
-                f.write(page_source)
-            raise RuntimeError("Could not find download link. Saved page to download_page_debug.html")
-        
-        zip_url = unescape(match.group(1))
-        print(f"✓ Found download URL")
-        
-        # Get cookies from Selenium session
-        cookies = driver.get_cookies()
-        print(f"✓ Extracted {len(cookies)} cookies")
-        
-        # Create requests session with Selenium cookies
-        session = requests.Session()
-        for cookie in cookies:
-            session.cookies.set(cookie['name'], cookie['value'], domain=cookie.get('domain'))
-        
-        # Download using requests
-        print("\nDownloading CSV file...")
-        zip_resp = session.get(zip_url, stream=True)
-        
-        if zip_resp.status_code != 200:
-            raise RuntimeError(f"Failed to download zip: {zip_resp.status_code}")
-        
-        # Save file with progress
-        total_size = int(zip_resp.headers.get('content-length', 0))
+        total_size = int(resp.headers.get("content-length", 0))
         downloaded = 0
-        
         with open(save_path, "wb") as f:
-            for chunk in zip_resp.iter_content(chunk_size=8192):
-                if chunk:
-                    f.write(chunk)
-                    downloaded += len(chunk)
-                    if total_size:
-                        percent = (downloaded / total_size) * 100
-                        print(f"\rProgress: {percent:.1f}%", end="", flush=True)
-        
-        print()
-        file_size = os.path.getsize(save_path)
-        print(f"✅ CSV downloaded successfully: {save_path} ({file_size:,} bytes)")
-        return True
-        
-    except Exception as e:
-        # Save debug info on error
-        try:
-            driver.save_screenshot("error_screenshot.png")
-            with open("error_page_source.html", "w", encoding="utf-8") as f:
-                f.write(driver.page_source)
-            print("\n⚠️  Saved error_screenshot.png and error_page_source.html for debugging")
-        except:
-            pass
-        raise e
-        
-    finally:
-        driver.quit()
+            for chunk in resp.iter_content(chunk_size=1 << 16):
+                f.write(chunk)
+                downloaded += len(chunk)
+        if total_size and downloaded != total_size:
+            raise RuntimeError(f"Download incomplete: {downloaded:,} of {total_size:,} bytes")
+
+    if not zipfile.is_zipfile(save_path):
+        raise RuntimeError(f"{save_path} is not a valid zip file")
+    print(f"✅ CSV downloaded successfully: {save_path} ({os.path.getsize(save_path):,} bytes)")
+
+
+def download_bgg_csv(username, password, save_path="boardgames_ranks.zip"):
+    print("=" * 60)
+    print("BGG Data Download")
+    print("=" * 60)
+    session = login(username, password)
+    url = find_download_url(session)
+    download_zip(url, save_path)
+    return True
+
 
 def main():
     username = os.getenv("BGG_USERNAME") or input("BGG Username: ")
     password = os.getenv("BGG_PASSWORD") or input("BGG Password: ")
-    
+
     if not username or not password:
         print("❌ Error: Username and password required")
-        exit(1)
-    
-    download_bgg_csv_with_selenium(username, password)
+        sys.exit(1)
+
+    download_bgg_csv(username, password)
+
 
 if __name__ == "__main__":
     try:
@@ -398,4 +124,4 @@ if __name__ == "__main__":
         print(f"\n❌ Error: {e}")
         import traceback
         traceback.print_exc()
-        exit(1)
+        sys.exit(1)

@@ -26,3 +26,8 @@ previous_versions/
 
 boardgames.db
 *.db
+
+# Local daily update runner (local_update_database.py)
+.env
+.update_work/
+logs/

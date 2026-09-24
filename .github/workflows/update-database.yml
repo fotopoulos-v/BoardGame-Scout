@@ -4,9 +4,10 @@ permissions:
   contents: write
 
 on:
-  schedule:
-    # Run daily at 4 AM UTC (after CSV download completes)
-    - cron: '0 4 * * *'
+  # Daily schedule disabled: since 2026-08-24 Cloudflare blocks BGG logins from
+  # GitHub runner IPs. The daily update now runs locally (local_update_database.py).
+  # schedule:
+  #   - cron: '0 4 * * *'
   workflow_dispatch:  # Allow manual trigger
 
 jobs:
